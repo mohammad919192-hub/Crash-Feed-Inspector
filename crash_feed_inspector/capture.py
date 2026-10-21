@@ -80,7 +80,8 @@ def capture() -> None:
             if raw is None:
                 break
             count += 1
-            sanitized = sanitize_message(str(raw))
+            raw_text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
+            sanitized = sanitize_message(raw_text)
             record = {"captured_at_unix": time.time(), "message_index": count, "raw_sanitized": sanitized}
             with RAW_PATH.open("a", encoding="utf-8") as handle:
                 handle.write(json.dumps(record, ensure_ascii=False) + "\n")
@@ -97,7 +98,7 @@ def capture() -> None:
                         conflicting_ids.add(round_id)
                     else:
                         parsed_by_id[round_id] = result
-            print(f"Captured message {count} ({len(str(raw))} characters; common secret fields redacted)")
+            print(f"Captured message {count} ({len(raw_text)} characters; common secret fields redacted)")
     finally:
         ws.close()
 
