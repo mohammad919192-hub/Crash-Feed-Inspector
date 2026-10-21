@@ -22,6 +22,12 @@ class ReportTests(unittest.TestCase):
         self.assertNotIn("private-round", html)
         self.assertIn("Historical frequencies", html)
 
+    def test_dashboard_rejects_invalid_threshold(self):
+        with tempfile.TemporaryDirectory() as directory:
+            rows = [{"round_id": "r1", "multiplier": 2.0, "verified": True}]
+            with self.assertRaisesRegex(ValueError, "threshold must be a finite number"):
+                generate_dashboard(rows, Path(directory) / "dashboard.html", threshold=float("nan"))
+
     def test_dashboard_refuses_unverified_only_data(self):
         with tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "No rows are explicitly verified"):
