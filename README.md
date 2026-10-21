@@ -62,9 +62,10 @@ CSV must contain round_id and multiplier. Optional columns are timestamp_utc, so
 ```bash
 python -m crash_feed_inspector validate-csv path/to/rounds.csv
 python -m crash_feed_inspector analyze-csv path/to/rounds.csv --threshold 2.0 --min-train 30
+python -m crash_feed_inspector dashboard-csv path/to/rounds.csv --output data/dashboard.html --threshold 2.0
 ```
 
-Analysis refuses to proceed if there are no rows explicitly marked verified=true. Only mark rows verified after independently reconciling them against a trusted source. Never mark heuristic numeric candidates verified simply because they look plausible.
+Analysis and dashboard generation refuse to proceed if there are no rows explicitly marked verified=true. The HTML dashboard is a local static snapshot, not a live feed. Only mark rows verified after independently reconciling them against a trusted source. Never mark heuristic numeric candidates verified simply because they look plausible.
 
 ## Python analytics example
 
@@ -90,6 +91,8 @@ python -m compileall -q crash_feed_inspector tests
 
 - docs/PROJECT_SPEC.md — scope and research requirements
 - docs/DATA_CONTRACT.md — parsing, normalization, and verification rules
+- docs/ARCHITECTURE.md — module boundaries and engineering decisions
+- docs/DELIVERY_PLAN.md — acceptance matrix and ordered delivery plan
 - docs/ROADMAP.md — stages and evidence-based completion criteria
 
 ## Current verification limits
