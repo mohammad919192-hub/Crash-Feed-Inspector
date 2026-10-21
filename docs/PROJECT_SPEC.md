@@ -42,6 +42,7 @@ Implemented in the repository:
 - verified-only CLI analysis;
 - descriptive statistics and chronological walk-forward baseline;
 - unit tests and CI on Python 3.11 and 3.12;
+- local static HTML report for verified historical data;
 - review-only Supabase migration with RLS enabled and client access revoked.
 
 Not yet established:
@@ -50,7 +51,7 @@ Not yet established:
 - any real protocol fixture or trusted historical dataset;
 - a stable predictive advantage;
 - a live Supabase destination or ingestion service;
-- a deployed dashboard.
+- a live or deployed dashboard (only an offline static report is implemented).
 
 ## Completion criteria
 - [x] Unit tests and compilation pass in CI for supported Python versions (observed on commit with capture tests; recheck after later commits).
