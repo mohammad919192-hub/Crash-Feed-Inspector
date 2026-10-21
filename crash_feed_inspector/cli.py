@@ -32,6 +32,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     rows = load_rounds_csv(args.csv_path)
     report = {"quality": quality_report(rows)}
     if args.command == "analyze-csv":
+        if args.min_train < 1:
+            parser.error("--min-train must be a positive integer.")
+        if args.threshold < 1 or not __import__("math").isfinite(args.threshold):
+            parser.error("--threshold must be a finite number >= 1.0.")
         data = verified_multipliers(rows)
         if not data:
             parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
