@@ -10,6 +10,7 @@ from typing import Sequence
 from .analytics import describe, walk_forward_baseline
 from .capture import capture
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
+from .inspect import inspect_jsonl
 from .report import generate_dashboard
 
 
@@ -17,6 +18,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="crash-feed-inspector")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
+
+    inspect = subparsers.add_parser(
+        "inspect-jsonl",
+        help="Summarize local sanitized WebSocket samples without assuming a schema",
+    )
+    inspect.add_argument("jsonl_path", nargs="?", type=Path, default=Path("data/messages.jsonl"))
+    inspect.add_argument("--max-messages", type=int, default=100)
 
     validate = subparsers.add_parser("validate-csv", help="Validate a historical CSV dataset")
     validate.add_argument("csv_path", type=Path)
@@ -34,6 +42,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command in (None, "capture"):
         capture()
+        return 0
+
+    if args.command == "inspect-jsonl":
+        if not 1 <= args.max_messages <= 1000:
+            parser.error("--max-messages must be between 1 and 1000.")
+        try:
+            report = inspect_jsonl(args.jsonl_path, max_messages=args.max_messages)
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
 
     rows = load_rounds_csv(args.csv_path)
