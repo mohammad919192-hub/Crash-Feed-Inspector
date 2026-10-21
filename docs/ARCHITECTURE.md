@@ -37,6 +37,7 @@ Descriptive analysis + chronological walk-forward baseline
 - dataset.py: strict CSV contract, timestamp normalization, duplicate rejection, quality report.
 - analytics.py: descriptive statistics, rolling empirical rates, and walk-forward baseline.
 - cli.py: command routing and JSON output.
+- report.py: self-contained local HTML report from explicitly verified CSV rows only.
 - Supabase migration: proposed server-only persistence schema; not deployed.
 
 ## Design decisions
@@ -56,4 +57,4 @@ Descriptive analysis + chronological walk-forward baseline
 - No sanitized fixture from the actual protocol has been reviewed.
 - No real dataset exists in the repository.
 - CI status must be checked after the current commits.
-- There is no dashboard or live Supabase ingestion service yet.
+- The HTML report is a local snapshot, not a live dashboard or live Supabase ingestion service.
