@@ -7,7 +7,7 @@ from typing import Any
 
 SENSITIVE_KEY = re.compile(
     r"(authorization|cookie|set-cookie|access[_-]?token|refresh[_-]?token|"
-    r"token|password|passwd|secret|api[_-]?key|csrf|session[_-]?id)",
+    r"token|jwt|bearer|credential|password|passwd|secret|api[_-]?key|csrf|session[_-]?id|signed[_-]?url)",
     re.IGNORECASE,
 )
 TEXT_SECRET = re.compile(
