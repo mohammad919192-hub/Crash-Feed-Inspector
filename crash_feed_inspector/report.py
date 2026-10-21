@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import html
+import math
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -55,6 +56,12 @@ def generate_dashboard(
 ) -> Path:
     """Write a standalone HTML report. Only explicitly verified rows feed statistics."""
     data_rows = list(rows)
+    try:
+        threshold = float(threshold)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("threshold must be a finite number >= 1.0.") from exc
+    if not math.isfinite(threshold) or threshold < 1.0:
+        raise ValueError("threshold must be a finite number >= 1.0.")
     values = verified_multipliers(data_rows)
     if not values:
         raise ValueError("No rows are explicitly verified=true; refusing to chart unverified candidates.")
