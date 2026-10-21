@@ -2,7 +2,7 @@
 
 ## System boundary
 
-\`\`\`text
+```text
 Authorized WebSocket endpoint
         |
         v
@@ -27,7 +27,7 @@ Verified historical dataset
         |
         v
 Descriptive analysis + chronological walk-forward baseline
-\`\`\`
+```
 
 ## Module ownership
 
