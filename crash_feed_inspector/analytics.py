@@ -9,6 +9,8 @@ from typing import Iterable
 def validate_multipliers(values: Iterable[float]) -> list[float]:
     data: list[float] = []
     for value in values:
+        if isinstance(value, bool):
+            raise ValueError(f"Invalid multiplier: {value!r}")
         try:
             number = float(value)
         except (TypeError, ValueError) as exc:
@@ -22,6 +24,8 @@ def validate_multipliers(values: Iterable[float]) -> list[float]:
 
 
 def _threshold(value: float) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f"Invalid threshold: {value!r}")
     try:
         number = float(value)
     except (TypeError, ValueError) as exc:
