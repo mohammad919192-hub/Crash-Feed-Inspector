@@ -12,6 +12,7 @@ from .capture import capture
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
 from .report import generate_dashboard
+from .research import research_report
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -34,6 +35,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     analyze.add_argument("--threshold", type=float, default=2.0)
     analyze.add_argument("--min-train", type=int, default=30)
 
+    research = subparsers.add_parser(
+        "research-csv",
+        help="Run transparent historical-frequency, uncertainty, and stability filters",
+    )
+    research.add_argument("csv_path", type=Path)
+    research.add_argument("--thresholds", type=float, nargs="+", default=[1.5, 2.0, 3.0, 5.0])
+    research.add_argument("--windows", type=int, nargs="+", default=[30, 100, 300])
+    research.add_argument("--min-history", type=int, default=100)
+    research.add_argument("--max-window-rate-gap", type=float, default=0.15)
+
     dashboard = subparsers.add_parser("dashboard-csv", help="Generate a local HTML report from verified CSV rows")
     dashboard.add_argument("csv_path", type=Path)
     dashboard.add_argument("--output", type=Path, default=Path("data/dashboard.html"))
@@ -54,8 +65,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
 
-    rows = load_rounds_csv(args.csv_path)
+    try:
+        rows = load_rounds_csv(args.csv_path)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
     report = {"quality": quality_report(rows)}
+
+    if args.command == "research-csv":
+        data = verified_multipliers(rows)
+        if not data:
+            parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
+        try:
+            report["research"] = research_report(
+                data,
+                thresholds=tuple(args.thresholds),
+                windows=tuple(args.windows),
+                min_history=args.min_history,
+                max_window_rate_gap=args.max_window_rate_gap,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "dashboard-csv":
         if args.threshold < 1 or not math.isfinite(args.threshold):
             parser.error("--threshold must be a finite number >= 1.0.")
