@@ -13,6 +13,14 @@ class SecurityTests(unittest.TestCase):
         self.assertEqual(result["nested"]["cookie"], "[REDACTED]")
         self.assertEqual(result["nested"]["count"], 3)
 
+    def test_jwt_and_signed_url_fields_are_redacted(self):
+        result = json.loads(sanitize_message(json.dumps({
+            "jwt": "header.payload.signature",
+            "signed_url": "https://example.invalid/file?signature=private",
+        })))
+        self.assertEqual(result["jwt"], "[REDACTED]")
+        self.assertEqual(result["signed_url"], "[REDACTED]")
+
     def test_text_token_is_redacted(self):
         result = sanitize_message("token=private-value&count=2")
         self.assertNotIn("private-value", result)
