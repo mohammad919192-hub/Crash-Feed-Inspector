@@ -42,7 +42,12 @@ def load_rounds_csv(path: str | Path) -> list[dict[str, Any]]:
     file_path = Path(path)
     with file_path.open("r", encoding="utf-8-sig", newline="") as handle:
         reader = csv.DictReader(handle)
-        headers = set(reader.fieldnames or [])
+        raw_headers = reader.fieldnames or []
+        if not raw_headers or any(not isinstance(name, str) or not name.strip() for name in raw_headers):
+            raise ValueError("CSV headers must be non-empty column names.")
+        if len(set(raw_headers)) != len(raw_headers):
+            raise ValueError("CSV contains duplicate column names.")
+        headers = set(raw_headers)
         missing = REQUIRED_COLUMNS - headers
         if missing:
             raise ValueError("CSV missing required columns: " + ", ".join(sorted(missing)))
@@ -53,6 +58,9 @@ def load_rounds_csv(path: str | Path) -> list[dict[str, Any]]:
         rows: list[dict[str, Any]] = []
         seen_ids: set[str] = set()
         for row_number, row in enumerate(reader, start=2):
+            extra_values = row.pop(None, None)
+            if extra_values and any(str(value).strip() for value in extra_values):
+                raise ValueError(f"Row {row_number}: contains more values than the header defines.")
             if not row or all(value is None or not value.strip() for value in row.values()):
                 continue
             round_id = (row.get("round_id") or "").strip()
