@@ -56,12 +56,12 @@ class DatasetTests(unittest.TestCase):
             quality_report([])
 
     def test_duplicate_headers_rejected(self):
-        path = self.write_csv("round_id,round_id,multiplier\\nr1,r2,2.0\\n")
+        path = self.write_csv("round_id,round_id,multiplier\nr1,r2,2.0\n")
         with self.assertRaisesRegex(ValueError, "duplicate column names"):
             load_rounds_csv(path)
 
     def test_extra_values_rejected(self):
-        path = self.write_csv("round_id,multiplier\\nr1,2.0,unexpected\\n")
+        path = self.write_csv("round_id,multiplier\nr1,2.0,unexpected\n")
         with self.assertRaisesRegex(ValueError, "more values than the header"):
             load_rounds_csv(path)
 
