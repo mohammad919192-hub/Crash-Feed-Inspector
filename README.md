@@ -6,6 +6,7 @@ Read-only diagnostics and statistical research for an authorized Crash-game WebS
 
 - Bounded WebSocket capture with timeout and message-count limits.
 - Best-effort redaction of common credential fields before local messages are written.
+- Local JSONL inspection that summarizes observed event values, JSON paths, and multiplier-like field candidates without assuming a target-site schema.
 - Explicit, configurable JSON event parsing; no target-site event schema is assumed.
 - Candidate rows remain unverified until reconciled against a trusted visible result history.
 - Strict CSV validation, duplicate-round rejection, timestamp normalization, and chronology diagnostics.
@@ -52,6 +53,24 @@ A path is a dotted JSON path with optional array indexes, such as data.rounds[0]
 Output files are local and ignored by Git:
 - data/messages.jsonl: sanitized message samples with capture timestamps
 - data/rounds.csv: schema-matched candidates in normalized CSV shape; verified is always false
+
+### Inspect captured messages
+
+After capture, summarize the observed structure locally:
+
+```bash
+python -m crash_feed_inspector inspect-jsonl
+```
+
+Optional arguments:
+
+```bash
+python -m crash_feed_inspector inspect-jsonl data/messages.jsonl --max-messages 100
+```
+
+The report lists JSON field paths and types, event-like values, and candidate values for fields whose names resemble multiplier/coefficient fields. This is exploratory evidence only: a numeric field may be an unrelated ID, timer, balance, or intermediate value. Confirm that the event represents a completed round, then compare several captured values with the game's visible completed-round history before configuring parser paths. Do not mark rows verified just because the values look like multipliers.
+
+If the candidate list is empty, that does not prove multipliers are absent: they may be encoded in a binary or non-JSON payload, nested in an unrecognized format, or omitted from this particular feed. Inspect only authorized samples; do not share raw logs until you have reviewed them locally.
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
@@ -100,7 +119,6 @@ python -m compileall -q crash_feed_inspector tests
 
 The live endpoint and its authoritative completed-round event have not been verified in this repository. Synthetic fixtures test generic parser behavior only; they do not establish the real feed schema or any predictive advantage.
 
-
 ## Android / Termux setup
 
 Termux is supported on a best-effort basis. Use a current Termux installation and run the following from the Termux shell:
@@ -124,6 +142,7 @@ Run a capture only after setting an authorized endpoint:
 
 ```bash
 python -m crash_feed_inspector capture
+python -m crash_feed_inspector inspect-jsonl
 ```
 
 A capture with no parser mapping stores sanitized message samples only; it does not identify or validate multipliers. Review local samples carefully before sharing them because redaction is best-effort. To update an existing checkout after a GitHub change, run `git pull --ff-only` from the repository directory.
