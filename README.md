@@ -93,6 +93,7 @@ python -m compileall -q crash_feed_inspector tests
 - docs/DATA_CONTRACT.md — parsing, normalization, and verification rules
 - docs/ARCHITECTURE.md — module boundaries and engineering decisions
 - docs/DELIVERY_PLAN.md — acceptance matrix and ordered delivery plan
+- docs/METRICS.md — KPI definitions and quality gates
 - docs/ROADMAP.md — stages and evidence-based completion criteria
 
 ## Current verification limits
