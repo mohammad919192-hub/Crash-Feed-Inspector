@@ -23,22 +23,22 @@ Read-only diagnostics and statistical research for an authorized Crash-game WebS
 
 Requires Python 3.11+.
 
-\`\`\`bash
+```bash
 python -m venv .venv
 # Windows: .venv\\Scripts\\activate
 # macOS/Linux:
 source .venv/bin/activate
 python -m pip install -r requirements.txt
 cp .env.example .env
-\`\`\`
+```
 
 Set CRASH_WS_URL in .env to a WebSocket endpoint you are authorized to access. It must begin with ws:// or wss://. Do not put credentials, cookies, or tokens in the URL or commit them to GitHub.
 
 ## Capture a bounded sample
 
-\`\`\`bash
+```bash
 python -m crash_feed_inspector capture
-\`\`\`
+```
 
 Configuration:
 - MAX_MESSAGES: maximum messages (default 100; hard cap 10,000)
@@ -59,32 +59,32 @@ Redaction is best-effort, not a guarantee. Do not capture a source if it may exp
 
 CSV must contain round_id and multiplier. Optional columns are timestamp_utc, source, verified, and schema_version. Timestamps must include a timezone. Round IDs must be unique within the file. If verified is omitted or blank, it defaults to false.
 
-\`\`\`bash
+```bash
 python -m crash_feed_inspector validate-csv path/to/rounds.csv
 python -m crash_feed_inspector analyze-csv path/to/rounds.csv --threshold 2.0 --min-train 30
-\`\`\`
+```
 
 Analysis refuses to proceed if there are no rows explicitly marked verified=true. Only mark rows verified after independently reconciling them against a trusted source. Never mark heuristic numeric candidates verified simply because they look plausible.
 
 ## Python analytics example
 
-\`\`\`python
+```python
 from crash_feed_inspector.analytics import describe, rolling_hit_rates, walk_forward_baseline
 
 # Example values only; replace with verified historical outcomes.
 multipliers = [1.12, 1.85, 2.4, 1.03, 5.1]
 print(describe(multipliers))
 print(rolling_hit_rates(multipliers, threshold=2.0, window=3))
-\`\`\`
+```
 
 Historical hit rates are descriptive, not guarantees or proof of a next-round edge. If outcomes are independent, recent results do not make a target multiplier due. Any candidate model must be compared with a simple baseline on chronological out-of-sample data and should report uncertainty and a no-signal outcome when no stable edge is demonstrated.
 
 ## Tests
 
-\`\`\`bash
+```bash
 python -m unittest discover -s tests -v
 python -m compileall -q crash_feed_inspector tests
-\`\`\`
+```
 
 ## Project documents
 
