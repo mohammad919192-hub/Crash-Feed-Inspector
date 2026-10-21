@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Sequence
 
@@ -34,7 +35,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "analyze-csv":
         if args.min_train < 1:
             parser.error("--min-train must be a positive integer.")
-        if args.threshold < 1 or not __import__("math").isfinite(args.threshold):
+        if args.threshold < 1 or not math.isfinite(args.threshold):
             parser.error("--threshold must be a finite number >= 1.0.")
         data = verified_multipliers(rows)
         if not data:
