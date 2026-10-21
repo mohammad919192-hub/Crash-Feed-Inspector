@@ -19,7 +19,7 @@ class InspectJsonlTests(unittest.TestCase):
         self.assertEqual(result["json_messages"], 1)
         self.assertEqual(result["event_type_value_counts"]["round.completed"], 1)
         self.assertEqual(result["multiplier_like_field_candidates"]["data.round.multiplier"], [2.45])
-        self.assertIn("never verified", result["warning"].lower())
+        self.assertIn("automatically verified", result["warning"].lower())
 
     def test_rejects_missing_file(self):
         with self.assertRaises(ValueError):
