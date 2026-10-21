@@ -17,12 +17,12 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(result["historical_hit_rates"]["2.0"], 0.75)
 
     def test_invalid_values(self):
-        for values in ([1.2, float("nan")], [0.9], [None], [float("inf")]):
+        for values in ([1.2, float("nan")], [0.9], [None], [float("inf")], [True]):
             with self.subTest(values=values), self.assertRaises(ValueError):
                 validate_multipliers(values)
 
     def test_invalid_thresholds(self):
-        for threshold in (0.9, float("nan"), float("inf")):
+        for threshold in (0.9, float("nan"), float("inf"), True):
             with self.subTest(threshold=threshold), self.assertRaises(ValueError):
                 rolling_hit_rates([1.0, 2.0], threshold, 1)
 
