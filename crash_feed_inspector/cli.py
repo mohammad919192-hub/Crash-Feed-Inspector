@@ -10,6 +10,7 @@ from typing import Sequence
 from .analytics import describe, walk_forward_baseline
 from .capture import capture
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
+from .report import generate_dashboard
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -25,6 +26,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     analyze.add_argument("--threshold", type=float, default=2.0)
     analyze.add_argument("--min-train", type=int, default=30)
 
+    dashboard = subparsers.add_parser("dashboard-csv", help="Generate a local HTML report from verified CSV rows")
+    dashboard.add_argument("csv_path", type=Path)
+    dashboard.add_argument("--output", type=Path, default=Path("data/dashboard.html"))
+    dashboard.add_argument("--threshold", type=float, default=2.0)
+
     args = parser.parse_args(argv)
     if args.command in (None, "capture"):
         capture()
@@ -32,6 +38,21 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     rows = load_rounds_csv(args.csv_path)
     report = {"quality": quality_report(rows)}
+    if args.command == "dashboard-csv":
+        if args.threshold < 1 or not math.isfinite(args.threshold):
+            parser.error("--threshold must be a finite number >= 1.0.")
+        try:
+            output = generate_dashboard(rows, args.output, threshold=args.threshold)
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps({
+            "dashboard_path": str(output),
+            "verified_rows": report["quality"]["verified_rows"],
+            "threshold": args.threshold,
+            "interpretation": "Static local report; not a live dashboard or a prediction guarantee.",
+        }, ensure_ascii=False, indent=2))
+        return 0
+
     if args.command == "analyze-csv":
         if args.min_train < 1:
             parser.error("--min-train must be a positive integer.")
