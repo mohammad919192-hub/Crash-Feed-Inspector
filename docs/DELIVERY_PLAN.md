@@ -26,6 +26,7 @@ A read-only research tool that can capture a bounded authorized feed sample, par
 | P-07 Restrict database access by default | C-07 | supabase/migrations/20261021000000_create_crash_rounds.sql | migration review only; live DB verification intentionally pending |
 | P-08 Reproducible CI | C-08 | .github/workflows/tests.yml | Python 3.11 and 3.12 compile and unit-test jobs |
 | P-09 Source-backed historical visualization | C-09 | crash_feed_inspector/report.py | tests/test_report.py; verified rows only; standalone local HTML |
+| P-10 Explicit operational and research metrics | C-10 | docs/METRICS.md | Metric definitions, denominators, interpretation guardrails, and unknown targets documented |
 
 ## Ordered delivery sequence
 
@@ -39,6 +40,7 @@ A read-only research tool that can capture a bounded authorized feed sample, par
 8. Compare the historical-frequency baseline to candidate models with walk-forward splits and an untouched final holdout.
 9. Choose the intended Supabase project before applying the migration or implementing any ingestion writes.
 10. Use the local HTML snapshot for verified historical summaries; build a live dashboard only after data quality and the event schema are established.
+11. Track the operational and data-quality measures in docs/METRICS.md; define targets only after an observed baseline exists.
 
 ## Release gates
 
