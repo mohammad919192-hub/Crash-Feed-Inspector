@@ -99,3 +99,31 @@ python -m compileall -q crash_feed_inspector tests
 ## Current verification limits
 
 The live endpoint and its authoritative completed-round event have not been verified in this repository. Synthetic fixtures test generic parser behavior only; they do not establish the real feed schema or any predictive advantage.
+
+
+## Android / Termux setup
+
+Termux is supported on a best-effort basis. Use a current Termux installation and run the following from the Termux shell:
+
+```bash
+pkg update
+pkg install git python nano -y
+git clone https://github.com/mohammad919192-hub/Crash-Feed-Inspector.git
+cd Crash-Feed-Inspector
+python -m pip install -r requirements.txt
+python -m crash_feed_inspector --help
+cp .env.example .env
+nano .env
+```
+
+If the repository is already cloned, enter its directory instead of running `git clone` again. If `pip` reports an externally-managed-environment error, do not force-install packages; create a virtual environment with `python -m venv .venv` and activate it with `source .venv/bin/activate`, then rerun the pip install command.
+
+In `.env`, keep exactly one active `CRASH_WS_URL=` assignment and set it only to a WebSocket endpoint you are authorized to access. Do not paste cookies, session tokens, passwords, or authorization headers into this file or share them in logs. Leave all `CRASH_*_PATH` parser fields blank until the actual message format has been inspected and independently confirmed. The endpoint is not verified by this project; a successful WebSocket handshake alone does not prove that completed-round multipliers are present.
+
+Run a capture only after setting an authorized endpoint:
+
+```bash
+python -m crash_feed_inspector capture
+```
+
+A capture with no parser mapping stores sanitized message samples only; it does not identify or validate multipliers. Review local samples carefully before sharing them because redaction is best-effort. To update an existing checkout after a GitHub change, run `git pull --ff-only` from the repository directory.
