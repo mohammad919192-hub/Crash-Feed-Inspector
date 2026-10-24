@@ -7,7 +7,7 @@ create table if not exists public.crash_rounds (
     source text not null check (length(btrim(source)) > 0),
     round_id text not null check (length(btrim(round_id)) > 0),
     occurred_at timestamptz,
-    multiplier numeric not null check (
+    multiplier numeric(12, 4) not null check (
         multiplier >= 1
         and multiplier < 'Infinity'::numeric
     ),
