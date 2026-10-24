@@ -48,6 +48,7 @@ def research_report(
     """Apply transparent data-volume, uncertainty, and stability checks.
 
     Input must already be ordered oldest-to-newest and independently verified.
+    The caller must validate ordering because multiplier values have no timestamps.
     A passing report is not evidence of a profitable betting strategy.
     """
     data = validate_multipliers(values)
@@ -69,34 +70,37 @@ def research_report(
         gaps = [abs(item["historical_rate"] - full["historical_rate"]) for item in available.values()]
         widest_gap = max(gaps, default=0.0)
         enough = len(data) >= min_history
-        stable = enough and (not available or widest_gap <= max_window_rate_gap)
-        low, high = full["wilson_95_ci"]
+        stability_checked = bool(available)
+        stable = enough and stability_checked and widest_gap <= max_window_rate_gap
         results[str(threshold)] = {
             "full_history": full,
             "recent_windows": available,
             "largest_recent_vs_full_rate_gap": widest_gap,
             "filters": {
                 "minimum_history_passed": enough,
+                "window_stability_checked": stability_checked,
                 "window_stability_passed": stable,
                 "uncertainty_interval_reported": True,
             },
             "status": (
-                "historical_rate_only_no_next_round_claim"
-                if stable and low != high
-                else "no_signal_insufficient_history"
+                "no_signal_insufficient_history"
                 if not enough
+                else "no_signal_stability_unavailable"
+                if not stability_checked
+                else "historical_rate_only_no_next_round_claim"
+                if stable
                 else "no_signal_unstable_history"
             ),
         }
 
     return {
         "data_count": len(data),
-        "ordering_requirement": "Input must be oldest-to-newest.",
+        "ordering_requirement": "Input must be oldest-to-newest; caller must validate timestamp order.",
         "threshold_results": results,
         "methodology": [
             "Verified outcomes only; parser candidates must not be treated as verified.",
             "Full-history empirical frequency with a Wilson 95% confidence interval.",
-            "Recent-window comparison as a simple stability diagnostic.",
+            "Recent-window comparison as a simple stability diagnostic; no available window means stability is unverified.",
             "No fitted complex model or next-round edge is claimed.",
             "Window selection and threshold comparisons can create multiple-testing bias.",
         ],
