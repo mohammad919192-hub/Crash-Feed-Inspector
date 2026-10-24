@@ -52,4 +52,4 @@ The offline analysis command only consumes rows explicitly marked verified=true.
 
 ## 6. Supabase boundary
 
-The migration under supabase/migrations defines a proposed persistence table with Row Level Security enabled and no client-facing policies. It is not applied to any live Supabase project. The only currently visible active Supabase project is named Testt, and this repository has not been confirmed as its owner workload. Select the intended project and review access requirements before applying the migration.
+The connected Supabase project is named `Crash`. Its `public.crash_rounds` and `public.crash_predictions` tables currently contain zero rows; RLS is enabled and `anon`/`authenticated` have no direct SELECT or INSERT privileges. No Edge Function or application ingestion path was found. The remote database records eight migrations, but the repository migration history is incomplete and had a `timestamp_utc`/`occurred_at` schema mismatch. Reconcile migration history before applying further migrations; do not expose service-role credentials to a client.
