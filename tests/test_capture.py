@@ -101,8 +101,8 @@ class CaptureTests(unittest.TestCase):
             "CRASH_SCHEMA_VERSION": "synthetic-test-v1",
         }
         existing = (
-            "round_id,timestamp_utc,multiplier,source,verified,schema_version\\n"
-            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\\n"
+            "round_id,timestamp_utc,multiplier,source,verified,schema_version\n"
+            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\n"
         )
         base, _ = self.run_capture([raw], config, existing_csv=existing)
         rows = load_rounds_csv(base / "rounds.csv")
@@ -121,8 +121,8 @@ class CaptureTests(unittest.TestCase):
             "CRASH_SCHEMA_VERSION": "synthetic-test-v1",
         }
         existing = (
-            "round_id,timestamp_utc,multiplier,source,verified,schema_version\\n"
-            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\\n"
+            "round_id,timestamp_utc,multiplier,source,verified,schema_version\n"
+            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\n"
         )
         base, _ = self.run_capture([raw], config, existing_csv=existing)
         rows = load_rounds_csv(base / "rounds.csv")
@@ -142,8 +142,8 @@ class CaptureTests(unittest.TestCase):
             "CRASH_SCHEMA_VERSION": "synthetic-test-v1",
         }
         existing = (
-            "round_id,timestamp_utc,multiplier,source,verified,schema_version\\n"
-            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\\n"
+            "round_id,timestamp_utc,multiplier,source,verified,schema_version\n"
+            "round-1,2026-01-01T00:00:00Z,2.0,fixture,false,fixture-v1\n"
         )
         base, _ = self.run_capture([raw], config, existing_csv=existing)
         rows = load_rounds_csv(base / "rounds.csv")
@@ -151,7 +151,7 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(rows[0]["multiplier"], 2.0)
 
     def test_invalid_existing_csv_is_not_overwritten(self):
-        invalid = "round_id,multiplier\\nround-1,not-a-number\\n"
+        invalid = "round_id,multiplier\nround-1,not-a-number\n"
         base, _ = self.run_capture([], {}, existing_csv=invalid, expect_error=True)
         self.assertEqual((base / "rounds.csv").read_text(encoding="utf-8"), invalid)
 
