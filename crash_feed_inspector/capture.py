@@ -123,7 +123,7 @@ def capture() -> None:
                 existing_headers = existing_reader.fieldnames or []
                 raw_existing_rows = list(existing_reader)
             has_existing_data = any(
-                any(value is not None and str(value).strip() for key, value in row.items() if key is not None)
+                any(value is not None and str(value).strip() for value in row.values())
                 for row in raw_existing_rows
             )
             if not existing_headers or len(set(existing_headers)) != len(ROUND_COLUMNS) or set(existing_headers) != set(ROUND_COLUMNS):
@@ -132,7 +132,7 @@ def capture() -> None:
                 existing_rows = load_rounds_csv(CSV_PATH)
         except (OSError, ValueError) as exc:
             raise SystemExit(
-                f"Existing rounds CSV is invalid; refusing to overwrite it ({type(exc).__name__})."
+                f"Existing rounds CSV is invalid ({type(exc).__name__}); refusing to overwrite it. Run validate-csv to inspect it."
             ) from None
 
     existing_by_id = {row["round_id"]: row for row in existing_rows}
