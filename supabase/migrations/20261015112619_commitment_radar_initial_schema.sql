@@ -1,0 +1,3 @@
+-- Historical migration marker retained to match the connected project's remote migration ledger.
+-- The original Commitment Radar schema is not part of this repository's current product.
+-- Current clean installs intentionally begin with the Crash Feed Inspector schema below.
