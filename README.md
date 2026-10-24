@@ -12,7 +12,7 @@ Read-only diagnostics and statistical research for an authorized Crash-game WebS
 - Strict CSV validation, duplicate-round rejection, timestamp normalization, and chronology diagnostics.
 - Descriptive statistics, Wilson confidence intervals, recent-window stability checks, and a chronological walk-forward frequency baseline.
 - Unit tests through GitHub Actions.
-- Review-only Supabase/Postgres migration draft for a round-history and prediction ledger; it has not been deployed.
+- Supabase schema exists in the connected project, but migration-history reconciliation is still required; the CLI does not write to Supabase.
 
 ## Explicit non-goals
 
@@ -88,11 +88,11 @@ Historical hit rates are descriptive, not guarantees or proof of a next-round ed
     python -m unittest discover -s tests -v
     python -m compileall -q crash_feed_inspector tests
 
-## Data retention and Supabase draft
+## Data retention and Supabase status
 
 See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round. A database is better suited to durable per-round records and a prediction ledger.
 
-supabase/migrations/202610210001_crash_research_ledger.sql is a review-only draft. It enables row-level security and intentionally creates no public client policies. It has NOT been applied. Confirm the correct Supabase project, server-side ingestion path, and access policy before deployment. Never expose a service-role key in a browser app.
+The connected Supabase project `Crash` currently contains `public.crash_rounds` and `public.crash_predictions`; both tables are empty, have RLS enabled, and do not grant direct table access to `anon` or `authenticated`. No Edge Functions or application ingestion path were found. The live database records eight migrations, while this repository previously tracked only two draft migrations whose `crash_rounds` definition did not match the live schema (`occurred_at` vs. `timestamp_utc`). The migration files are being aligned to the observed schema, but remote-only migration history still needs reconciliation. Do not run `supabase db push` until `supabase migration list` is reviewed and the migration history is reconciled. Never expose a service-role key in a browser app.
 
 ## Project documents
 
