@@ -133,11 +133,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--min-train must be a positive integer.")
         if args.threshold < 1 or not math.isfinite(args.threshold):
             parser.error("--threshold must be a finite number >= 1.0.")
-        data = verified_multipliers(rows)
+        verified_rows = [row for row in rows if row.get("verified") is True]
+        data = verified_multipliers(verified_rows)
         if not data:
             parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
         report["verified_analysis"] = describe(data, thresholds=(1.5, 2.0, 3.0, 5.0))
-        if len(data) > args.min_train:
+        verified_quality = quality_report(verified_rows)
+        if verified_quality["missing_timestamps"]:
+            report["walk_forward_baseline"] = {
+                "status": "no_signal_missing_timestamps",
+                "verified_rows": len(data),
+                "missing_timestamps": verified_quality["missing_timestamps"],
+                "interpretation": "Walk-forward evaluation was skipped because verified rows need timestamps to establish chronology.",
+            }
+        elif verified_quality["chronology_violations"]:
+            report["walk_forward_baseline"] = {
+                "status": "no_signal_chronology_invalid",
+                "verified_rows": len(data),
+                "chronology_violations": verified_quality["chronology_violations"],
+                "interpretation": "Walk-forward evaluation was skipped because verified rows are not ordered oldest-to-newest.",
+            }
+        elif len(data) > args.min_train:
             report["walk_forward_baseline"] = walk_forward_baseline(
                 data, threshold=args.threshold, min_train=args.min_train
             )
