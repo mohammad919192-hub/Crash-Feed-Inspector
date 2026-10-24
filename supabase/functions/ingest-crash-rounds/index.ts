@@ -35,6 +35,30 @@ function parseTimestamp(value: unknown): string | null | undefined {
   return new Date(milliseconds).toISOString();
 }
 
+async function readBodyBounded(req: Request, limit: number): Promise<string | null> {
+  if (!req.body) return "";
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > limit) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const joined = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return new TextDecoder().decode(joined);
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return response(405, { error: "method_not_allowed" });
 
@@ -50,15 +74,13 @@ Deno.serve(async (req: Request) => {
     return response(500, { error: "server_configuration_missing" });
   }
 
-  let bodyText: string;
+  let bodyText: string | null;
   try {
-    bodyText = await req.text();
+    bodyText = await readBodyBounded(req, MAX_BODY_BYTES);
   } catch {
     return response(400, { error: "invalid_request_body" });
   }
-  if (new TextEncoder().encode(bodyText).byteLength > MAX_BODY_BYTES) {
-    return response(413, { error: "request_too_large" });
-  }
+  if (bodyText === null) return response(413, { error: "request_too_large" });
 
   let body: unknown;
   try {
