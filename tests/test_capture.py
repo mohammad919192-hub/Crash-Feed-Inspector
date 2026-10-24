@@ -151,7 +151,7 @@ class CaptureTests(unittest.TestCase):
         self.assertEqual(rows[0]["multiplier"], 2.0)
 
     def test_invalid_existing_csv_is_not_overwritten(self):
-        invalid = "round_id,multiplier\nround-1,not-a-number\n"
+        invalid = "round_id,timestamp_utc,multiplier,source,verified,schema_version\nround-1,,not-a-number,fixture,false,fixture-v1\n"
         base, _ = self.run_capture([], {}, existing_csv=invalid, expect_error=True)
         self.assertEqual((base / "rounds.csv").read_text(encoding="utf-8"), invalid)
 
