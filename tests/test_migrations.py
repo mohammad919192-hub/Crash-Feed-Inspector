@@ -13,6 +13,10 @@ class MigrationContractTests(unittest.TestCase):
         for name in names:
             self.assertRegex(name, r"^\d{14}_[a-z0-9_]+\.sql$")
 
+    def test_supabase_cli_config_is_present(self):
+        config = (MIGRATIONS.parent / "config.toml").read_text(encoding="utf-8")
+        self.assertIn('project_id = "crash-feed-inspector"', config)
+
     def test_round_schema_matches_observed_supabase_column_contract(self):
         sql = (MIGRATIONS / "20261024150000_create_crash_rounds.sql").read_text(encoding="utf-8")
         self.assertIn("create table if not exists public.crash_rounds", sql.lower())
