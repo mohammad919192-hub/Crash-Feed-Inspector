@@ -65,7 +65,9 @@ def capture() -> None:
     try:
         ws = websocket.create_connection(url, timeout=timeout, enable_multithread=True)
     except Exception as exc:
-        raise SystemExit(f"WebSocket connection failed: {type(exc).__name__}: {exc}") from exc
+        raise SystemExit(
+            f"WebSocket connection failed ({type(exc).__name__}); endpoint details suppressed."
+        ) from None
 
     print("Connected. Capturing bounded sample; no bets or game actions are performed.")
     if parser_config is None:
@@ -76,6 +78,9 @@ def capture() -> None:
                 raw = ws.recv()
             except websocket.WebSocketTimeoutException:
                 print("Receive timeout; stopping capture.")
+                break
+            except Exception as exc:
+                print(f"Receive failed ({type(exc).__name__}); stopping capture.")
                 break
             if raw is None:
                 break
