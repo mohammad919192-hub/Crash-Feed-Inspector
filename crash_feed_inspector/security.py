@@ -12,7 +12,7 @@ SENSITIVE_KEY = re.compile(
 )
 TEXT_SECRET = re.compile(
     r"(?i)(authorization|cookie|set-cookie|access[_-]?token|refresh[_-]?token|"
-    r"token|jwt|bearer|credential|password|passwd|secret|api[_-]?key|csrf|signed[_-]?url)(\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|[^\s&,;]+)"
+    r"token|jwt|bearer|credential|password|passwd|secret|api[_-]?key|csrf|session[_-]?id|signed[_-]?url)(\s*[=:]\s*)(\"[^\"]*\"|'[^']*'|[^\s&,;]+)"
 )
 
 
