@@ -17,6 +17,7 @@ class MigrationContractTests(unittest.TestCase):
         sql = (MIGRATIONS / "20261024150000_create_crash_rounds.sql").read_text(encoding="utf-8")
         self.assertIn("create table if not exists public.crash_rounds", sql.lower())
         self.assertIn("occurred_at timestamptz", sql.lower())
+        self.assertIn("multiplier numeric(12, 4)", sql.lower())
         self.assertNotIn("timestamp_utc", sql.lower())
         self.assertIn("source_event_sha256", sql.lower())
         self.assertIn("enable row level security", sql.lower())
