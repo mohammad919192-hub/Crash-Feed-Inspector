@@ -16,21 +16,34 @@ _PATH_TOKEN = re.compile(r"([^.[\]]+)|\[(\d+)\]")
 
 
 def get_path(value: Any, path: str) -> Any:
-    """Resolve a dotted path with optional numeric list indexes."""
-    if not path or not path.strip():
+    """Resolve a strict dotted JSON path with optional non-negative list indexes."""
+    if not isinstance(path, str) or not path.strip():
         raise ValueError("A non-empty JSON field path is required.")
-    tokens: list[str | int] = []
-    for match in _PATH_TOKEN.finditer(path.strip()):
-        key, index = match.groups()
-        tokens.append(int(index) if index is not None else key)
-    if not tokens:
+    normalized = path.strip()
+    pattern = re.compile(r"^[^.\[\]]+(?:\[\d+\])*(?:\.[^.\[\]]+(?:\[\d+\])*)*$")
+    if not pattern.fullmatch(normalized):
         raise ValueError(f"Invalid field path: {path!r}")
+
+    tokens: list[str | int] = []
+    for segment in normalized.split("."):
+        key_match = re.match(r"^[^\[]+", segment)
+        if key_match:
+            tokens.append(key_match.group(0))
+            remainder = segment[key_match.end():]
+        else:
+            remainder = segment
+        tokens.extend(int(index) for index in re.findall(r"\[(\d+)\]", remainder))
+
     current = value
     for token in tokens:
-        try:
+        if isinstance(token, int):
+            if not isinstance(current, list) or token >= len(current):
+                raise ValueError(f"Field path {path!r} does not exist.")
             current = current[token]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise ValueError(f"Field path {path!r} does not exist.") from exc
+        else:
+            if not isinstance(current, dict) or token not in current:
+                raise ValueError(f"Field path {path!r} does not exist.")
+            current = current[token]
     return current
 
 
