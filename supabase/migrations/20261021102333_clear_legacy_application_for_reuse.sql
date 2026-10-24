@@ -1,0 +1,3 @@
+-- Historical migration marker retained to match the connected project's remote migration ledger.
+-- The live project has already been cleared of the legacy application tables.
+-- On a clean install there is nothing to delete; current migrations create only Crash tables.
