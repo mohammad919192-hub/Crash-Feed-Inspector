@@ -72,19 +72,44 @@ def main(argv: Sequence[str] | None = None) -> int:
     report = {"quality": quality_report(rows)}
 
     if args.command == "research-csv":
-        data = verified_multipliers(rows)
-        if not data:
+        verified_rows = [row for row in rows if row.get("verified") is True]
+        if not verified_rows:
             parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
-        try:
-            report["research"] = research_report(
-                data,
-                thresholds=tuple(args.thresholds),
-                windows=tuple(args.windows),
-                min_history=args.min_history,
-                max_window_rate_gap=args.max_window_rate_gap,
-            )
-        except ValueError as exc:
-            parser.error(str(exc))
+
+        # Multiplier-only research cannot establish chronology. Require every verified
+        # row to have a timestamp and confirm that those timestamps are oldest-to-newest.
+        verified_quality = quality_report(verified_rows)
+        if verified_quality["missing_timestamps"]:
+            report["research"] = {
+                "status": "no_signal_missing_timestamps",
+                "verified_rows": len(verified_rows),
+                "missing_timestamps": verified_quality["missing_timestamps"],
+                "interpretation": (
+                    "Research was not run because verified rows need timestamps to confirm "
+                    "oldest-to-newest ordering."
+                ),
+            }
+        elif verified_quality["chronology_violations"]:
+            report["research"] = {
+                "status": "no_signal_chronology_invalid",
+                "verified_rows": len(verified_rows),
+                "chronology_violations": verified_quality["chronology_violations"],
+                "interpretation": (
+                    "Research was not run because verified CSV rows are not ordered oldest-to-newest."
+                ),
+            }
+        else:
+            data = verified_multipliers(verified_rows)
+            try:
+                report["research"] = research_report(
+                    data,
+                    thresholds=tuple(args.thresholds),
+                    windows=tuple(args.windows),
+                    min_history=args.min_history,
+                    max_window_rate_gap=args.max_window_rate_gap,
+                )
+            except ValueError as exc:
+                parser.error(str(exc))
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
 
