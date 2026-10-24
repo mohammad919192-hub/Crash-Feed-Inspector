@@ -38,7 +38,7 @@ Defaults are transparent and configurable; they are not optimized trading parame
 
 ## Supabase migration status
 
-Both SQL files are review-only drafts and have not been confirmed as applied to a live project. The first migration defines the canonical `public.crash_rounds` table. The second migration creates only `public.crash_predictions` and indexes; it must not redefine `crash_rounds` with a conflicting column layout. Do not apply migrations until the correct Supabase project, authorization model, retention policy, and server-side ingestion path are confirmed. No database deployment is implied by committing these SQL files.
+The connected Supabase project `Crash` already has empty `public.crash_rounds` and `public.crash_predictions` tables. RLS is enabled and direct `anon`/`authenticated` SELECT/INSERT privileges are absent; the security advisor reports `rls_enabled_no_policy` as INFO, which is consistent with a server-only access model but means browser clients cannot use these tables. The live database records eight migrations while the repository previously tracked only two draft files, and the old `crash_rounds` draft used `timestamp_utc` while the live table uses `occurred_at`. The revised migration files are aligned to the observed table contract, but the remote-only migration history still needs reconciliation. Do not run `supabase db push` until the migration list and history are reviewed. No ingestion service or Edge Function currently writes data to these tables.
 
 ## Forecast validity
 
