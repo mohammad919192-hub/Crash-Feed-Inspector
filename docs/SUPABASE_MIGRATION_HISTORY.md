@@ -12,16 +12,19 @@ The connected Supabase project is `Crash` (`htfrixfcirgrhlmwtkjs`). Its remote m
 - `20261021105220_crash_research_schema`
 - `20261021111154_crash_integrity_guardrails`
 - `20261021112101_crash_prediction_integrity`
+- `20261024131139_crash_predictions_evaluated_multiplier_finite_guard`
+- `20261024132027_create_crash_rounds`
+- `20261024132036_crash_research_ledger`
 
 The first five original migration SQL bodies were not present in this repository, and the live project no longer contains the legacy Commitment Radar tables. Their local files are therefore explicitly marked historical/inert for fresh installs: they preserve timestamp alignment without re-creating the retired application. This is a deliberate final-state baseline, **not** a claim that the original SQL bodies were recovered.
 
-The three Crash migration files reconstruct the current end-state schema for clean local resets. Later migrations are idempotent and apply the current schema/guardrails.
+The Crash migrations reconstruct the current end-state schema for clean local resets. The three migrations recorded on 2026-10-24 were applied through the Supabase migration tool; the latter two are idempotent schema confirmations. All 11 remote migration versions now have matching local filenames.
 
 ## Live repair
 
 On 2026-10-24, the live `public.crash_predictions` table was confirmed empty. A migration added and validated `crash_predictions_evaluated_multiplier_finite_check`, enforcing that a non-null evaluated multiplier is finite and at least 1. The weaker previous constraint was removed after the stronger constraint was validated. No rows were deleted or rewritten.
 
-The live project still has no public client table grants or RLS policies. That is intentional until a server-side ingestion path with a least-privilege credential is implemented. Never put the service-role key in a client or commit it.
+The live project still has no public client table grants or RLS policies. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled and only accepts a `service_role` JWT; it uses the server-side `SUPABASE_SERVICE_ROLE_KEY` and stores rows as unverified candidates. The CLI sync command uses the key from the owner's ignored local `.env`. Never put the service-role key in a client or commit it.
 
 ## Required verification before future schema changes
 
