@@ -16,6 +16,14 @@ class ProtocolTests(unittest.TestCase):
     def test_nested_path_and_array_index(self):
         self.assertEqual(get_path({"data": {"items": [{"value": 4}]}}, "data.items[0].value"), 4)
 
+    def test_malformed_path_and_scalar_index_are_rejected(self):
+        with self.assertRaises(ValueError):
+            get_path({"data": {"value": 3}}, "data..value")
+        with self.assertRaises(ValueError):
+            get_path({"value": "text"}, "value[0]")
+        with self.assertRaises(ValueError):
+            get_path({"data": []}, "data[abc]")
+
     def test_non_final_event_is_ignored(self):
         raw = json.dumps({"type": "round.started", "data": {"round": {"id": "a", "multiplier": 2}}})
         self.assertIsNone(parse_final_result(
