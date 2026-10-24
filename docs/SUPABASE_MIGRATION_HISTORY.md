@@ -15,6 +15,9 @@ The connected Supabase project is `Crash` (`htfrixfcirgrhlmwtkjs`). Its remote m
 - `20261024131139_crash_predictions_evaluated_multiplier_finite_guard`
 - `20261024132027_create_crash_rounds`
 - `20261024132036_crash_research_ledger`
+- `20261024131139_crash_predictions_evaluated_multiplier_finite_guard`
+- `20261024132027_create_crash_rounds`
+- `20261024132036_crash_research_ledger`
 
 The first five original migration SQL bodies were not present in this repository, and the live project no longer contains the legacy Commitment Radar tables. Their local files are therefore explicitly marked historical/inert for fresh installs: they preserve timestamp alignment without re-creating the retired application. This is a deliberate final-state baseline, **not** a claim that the original SQL bodies were recovered.
 
