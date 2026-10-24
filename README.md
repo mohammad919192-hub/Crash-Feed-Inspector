@@ -100,7 +100,7 @@ Historical hit rates are descriptive, not guarantees or proof of a next-round ed
 
 ## Data retention and Supabase status
 
-See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round. A database is better suited to durable per-round records and a prediction ledger.
+See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round.
 
 The connected Supabase project `Crash` contains empty `public.crash_rounds` and `public.crash_predictions` tables; both have RLS enabled and no direct table access for `anon` or `authenticated`. All 11 remote migration versions have matching local filenames, including the finite-value guard. Five retired Commitment Radar versions are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled; the CLI can sync local candidates with `sync-supabase` after setting the service-role JWT in the ignored `.env`. No real feed schema has been verified, so capture parsing still requires inspection and independent confirmation. See `docs/SUPABASE_MIGRATION_HISTORY.md`. Never expose a service-role key in a browser app.
 
