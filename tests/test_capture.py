@@ -20,14 +20,17 @@ class FakeWebSocket:
 
     def close(self):
         self.closed = True
+        if getattr(self, "close_error", False):
+            raise RuntimeError("simulated close failure")
 
 
 class CaptureTests(unittest.TestCase):
-    def run_capture(self, messages, environment):
+    def run_capture(self, messages, environment, *, close_error=False):
         temp_dir = tempfile.TemporaryDirectory()
         self.addCleanup(temp_dir.cleanup)
         base = Path(temp_dir.name)
         fake_socket = FakeWebSocket([*messages, None])
+        fake_socket.close_error = close_error
         env = {
             "CRASH_WS_URL": "wss://example.invalid/feed",
             "MAX_MESSAGES": "10",
@@ -71,6 +74,13 @@ class CaptureTests(unittest.TestCase):
         self.assertNotIn("private-pass", message)
         self.assertNotIn("private-token", message)
         self.assertIn("endpoint details suppressed", message)
+
+    def test_close_error_does_not_discard_captured_csv(self):
+        base, fake_socket = self.run_capture([], {}, close_error=True)
+        self.assertTrue(fake_socket.closed)
+        self.assertTrue((base / "rounds.csv").is_file())
+        with (base / "rounds.csv").open(encoding="utf-8", newline="") as handle:
+            self.assertEqual(list(csv.DictReader(handle)), [])
 
     def test_configured_mapping_emits_unverified_candidate(self):
         raw = json.dumps({
