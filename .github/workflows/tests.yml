@@ -76,5 +76,5 @@ jobs:
       - name: Verify repair guard adds a missing finite-value constraint
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER TABLE public.crash_predictions DROP CONSTRAINT crash_predictions_evaluated_multiplier_finite_check"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261024150100_crash_research_ledger.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261024132036_crash_research_ledger.sql
           test "$(psql "$DATABASE_URL" -Atc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.crash_predictions'::regclass AND conname='crash_predictions_evaluated_multiplier_finite_check'")" = "1"
