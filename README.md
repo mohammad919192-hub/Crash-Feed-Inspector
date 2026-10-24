@@ -56,7 +56,7 @@ A path is a dotted JSON path with optional array indexes, such as data.rounds[0]
 
 Output files are local and ignored by Git:
 - data/messages.jsonl: sanitized message samples with capture timestamps
-- data/rounds.csv: schema-matched candidates in normalized CSV shape; verified is always false
+- data/rounds.csv: normalized candidates with verified=false; prior rows are preserved, repeated round IDs are deduplicated, and conflicting multipliers are skipped with a warning
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
