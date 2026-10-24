@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 from typing import Sequence
 
@@ -13,12 +14,21 @@ from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
 from .report import generate_dashboard
 from .research import research_report
+from .supabase_sync import sync_rows
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="crash-feed-inspector")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
+
+    sync = subparsers.add_parser(
+        "sync-supabase",
+        help="Send unverified normalized CSV candidates to the authenticated Supabase ingestion function",
+    )
+    sync.add_argument("csv_path", type=Path)
+    sync.add_argument("--batch-size", type=int, default=500)
+    sync.add_argument("--timeout", type=int, default=20)
 
     inspect = subparsers.add_parser(
         "inspect-jsonl",
@@ -70,6 +80,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, ValueError) as exc:
         parser.error(str(exc))
     report = {"quality": quality_report(rows)}
+
+    if args.command == "sync-supabase":
+        from dotenv import load_dotenv
+        load_dotenv()
+        if not 1 <= args.batch_size <= 500:
+            parser.error("--batch-size must be between 1 and 500.")
+        if not 1 <= args.timeout <= 120:
+            parser.error("--timeout must be between 1 and 120 seconds.")
+        try:
+            result = sync_rows(
+                rows,
+                os.getenv("SUPABASE_URL", ""),
+                os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+                timeout=args.timeout,
+                batch_size=args.batch_size,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(json.dumps({
+            **result,
+            "quality": report["quality"],
+            "interpretation": "Rows are stored as unverified candidates; this command does not establish source authenticity.",
+        }, ensure_ascii=False, indent=2))
+        return 0
 
     if args.command == "research-csv":
         verified_rows = [row for row in rows if row.get("verified") is True]
