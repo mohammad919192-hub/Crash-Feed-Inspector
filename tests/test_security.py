@@ -26,6 +26,11 @@ class SecurityTests(unittest.TestCase):
         self.assertNotIn("private-value", result)
         self.assertIn("[REDACTED]", result)
 
+    def test_plain_text_session_id_is_redacted(self):
+        result = sanitize_message("session_id=private-session-value&count=2")
+        self.assertNotIn("private-session-value", result)
+        self.assertIn("[REDACTED]", result)
+
 
 if __name__ == "__main__":
     unittest.main()
