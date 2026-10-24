@@ -13,6 +13,21 @@ class MigrationContractTests(unittest.TestCase):
         for name in names:
             self.assertRegex(name, r"^\d{14}_[a-z0-9_]+\.sql$")
 
+    def test_remote_migration_versions_are_represented_locally(self):
+        expected = {
+            "20261015112619", "20261015120014", "20261018094039",
+            "20261018100502", "20261021102333", "20261021105220",
+            "20261021111154", "20261021112101", "20261024131139",
+        }
+        actual = {path.name[:14] for path in MIGRATIONS.glob("*.sql")}
+        self.assertTrue(expected.issubset(actual), f"Missing local migration versions: {sorted(expected - actual)}")
+
+    def test_historical_markers_are_explicitly_documented(self):
+        marker = (MIGRATIONS / "20261015112619_commitment_radar_initial_schema.sql").read_text(encoding="utf-8")
+        self.assertIn("Historical migration marker", marker)
+        docs = (MIGRATIONS.parents[1] / "docs" / "SUPABASE_MIGRATION_HISTORY.md").read_text(encoding="utf-8")
+        self.assertIn("not a claim that the original SQL bodies were recovered", docs)
+
     def test_supabase_cli_config_is_present(self):
         config = (MIGRATIONS.parent / "config.toml").read_text(encoding="utf-8")
         self.assertIn('project_id = "crash-feed-inspector"', config)
