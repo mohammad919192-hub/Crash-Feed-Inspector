@@ -14,7 +14,7 @@ from typing import Any, Iterable
 
 
 _PATH_PATTERN = re.compile(
-    r"^(?:\\[\\d+\\]|[^.\\[\\]]+)(?:\\[\\d+\\])*(?:\\.[^.\\[\\]]+(?:\\[\\d+\\])*)*$"
+    r"^(?:\[\d+\]|[^.\[\]]+)(?:\[\d+\])*(?:\.[^.\[\]]+(?:\[\d+\])*)*$"
 )
 
 
@@ -32,13 +32,13 @@ def get_path(value: Any, path: str) -> Any:
     normalized = _validate_path(path)
     tokens: list[str | int] = []
     for segment in normalized.split("."):
-        key_match = re.match(r"^[^\\[]+", segment)
+        key_match = re.match(r"^[^\[]+", segment)
         if key_match:
             tokens.append(key_match.group(0))
             remainder = segment[key_match.end():]
         else:
             remainder = segment
-        tokens.extend(int(index) for index in re.findall(r"\\[(\\d+)\\]", remainder))
+        tokens.extend(int(index) for index in re.findall(r"\[(\d+)\]", remainder))
 
     current = value
     for token in tokens:
