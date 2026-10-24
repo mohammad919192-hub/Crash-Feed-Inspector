@@ -13,18 +13,20 @@ Maintain a provenance-aware history of observed rounds and time-stamped research
 5. **Independent verification:** compare captured outcomes with a trusted visible completed-round history. Until reconciled, a candidate stays unverified and must not enter model training.
 6. **Dataset quality:** report missing timestamps, source/schema versions, duplicates, chronology violations, missing data, and conflicting records.
 7. **Baseline estimates:** compute empirical threshold frequencies and confidence intervals from verified outcomes only.
-8. **Stability filter:** compare recent windows with the full historical frequency; large shifts result in no_signal_unstable_history.
+8. **Stability filter:** compare recent windows with the full historical frequency; large shifts result in no_signal_unstable_history. If none of the configured windows fits the available history, return no_signal_stability_unavailable.
 9. **Out-of-sample evaluation:** predictions must be timestamped before the result, use only earlier data, and be evaluated on chronological holdouts. Compare against simple frequency baselines using proper scoring rules and calibration.
-10. **Decision gate:** report no_signal when data are insufficient, unstable, unverified, or fail predeclared evaluation criteria. A passing filter means only that a historical estimate passed those diagnostics; it does not establish an exploitable edge.
+10. **Decision gate:** report no_signal when data are insufficient, unstable, unverified, unordered, missing required timestamps, or fail predeclared evaluation criteria. A passing filter means only that a historical estimate passed those diagnostics; it does not establish an exploitable edge.
 
 ## Current local research command
 
-Only rows explicitly marked verified=true are used:
+Only rows explicitly marked verified=true are considered:
 
     python -m crash_feed_inspector research-csv data/rounds.csv
     python -m crash_feed_inspector research-csv data/rounds.csv --thresholds 1.5 2 3 5 --windows 30 100 300 --min-history 100 --max-window-rate-gap 0.15
 
-Input CSV must be ordered oldest-to-newest. Defaults are transparent and configurable; they are not optimized trading parameters. Trying many thresholds/windows and then reporting the best creates multiple-testing bias. Pre-register thresholds and preserve a final untouched holdout.
+For this command, every verified row must have a timezone-aware timestamp, and the verified rows must appear oldest-to-newest in the CSV. If timestamps are missing or verified rows are out of order, the command emits a no_signal status and does not calculate threshold frequencies. This ordering check is necessary because a list of multiplier values alone cannot prove chronology.
+
+Defaults are transparent and configurable; they are not optimized trading parameters. Trying many thresholds/windows and then reporting the best creates multiple-testing bias. Pre-register thresholds and preserve a final untouched holdout.
 
 ## Where each kind of data belongs
 
@@ -36,7 +38,7 @@ Input CSV must be ordered oldest-to-newest. Defaults are transparent and configu
 
 ## Supabase migration status
 
-supabase/migrations/202610210001_crash_research_ledger.sql is a review-only draft. It enables row-level security and intentionally defines no public client policies. Do not apply it until the correct Supabase project, authorization model, retention policy, and server-side ingestion path are confirmed. No database deployment is implied by committing this SQL file.
+Both SQL files are review-only drafts and have not been confirmed as applied to a live project. The first migration defines the canonical `public.crash_rounds` table. The second migration creates only `public.crash_predictions` and indexes; it must not redefine `crash_rounds` with a conflicting column layout. Do not apply migrations until the correct Supabase project, authorization model, retention policy, and server-side ingestion path are confirmed. No database deployment is implied by committing these SQL files.
 
 ## Forecast validity
 
