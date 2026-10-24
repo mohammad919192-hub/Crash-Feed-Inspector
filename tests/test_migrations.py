@@ -26,7 +26,8 @@ class MigrationContractTests(unittest.TestCase):
         marker = (MIGRATIONS / "20261015112619_commitment_radar_initial_schema.sql").read_text(encoding="utf-8")
         self.assertIn("Historical migration marker", marker)
         docs = (MIGRATIONS.parents[1] / "docs" / "SUPABASE_MIGRATION_HISTORY.md").read_text(encoding="utf-8")
-        self.assertIn("not a claim that the original SQL bodies were recovered", docs)
+        self.assertIn("original migration SQL bodies were not present", docs)
+        self.assertIn("deliberate final-state baseline", docs)
 
     def test_supabase_cli_config_is_present(self):
         config = (MIGRATIONS.parent / "config.toml").read_text(encoding="utf-8")
