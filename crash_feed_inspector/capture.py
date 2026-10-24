@@ -10,6 +10,7 @@ from pathlib import Path
 import websocket
 from dotenv import load_dotenv
 
+from .dataset import load_rounds_csv, quality_report
 from .protocol import parse_final_result
 from .security import sanitize_message
 
@@ -111,16 +112,68 @@ def capture() -> None:
             print(f"WebSocket close failed ({type(exc).__name__}); preserving captured output.")
 
     candidates = [row for round_id, row in parsed_by_id.items() if round_id not in conflicting_ids]
+
+    # Merge with the prior CSV rather than discarding history on every capture run.
+    # Invalid existing data must never be silently replaced.
+    existing_rows = []
+    if CSV_PATH.exists():
+        try:
+            with CSV_PATH.open("r", encoding="utf-8-sig", newline="") as existing_handle:
+                existing_reader = csv.DictReader(existing_handle)
+                existing_headers = existing_reader.fieldnames or []
+                raw_existing_rows = list(existing_reader)
+            has_existing_data = any(
+                any(value is not None and str(value).strip() for key, value in row.items() if key is not None)
+                for row in raw_existing_rows
+            )
+            if not existing_headers or len(set(existing_headers)) != len(ROUND_COLUMNS) or set(existing_headers) != set(ROUND_COLUMNS):
+                raise ValueError("Existing rounds CSV headers do not match the expected schema.")
+            if has_existing_data:
+                existing_rows = load_rounds_csv(CSV_PATH)
+        except (OSError, ValueError) as exc:
+            raise SystemExit(
+                f"Existing rounds CSV is invalid; refusing to overwrite it ({type(exc).__name__})."
+            ) from None
+
+    existing_by_id = {row["round_id"]: row for row in existing_rows}
+    new_rows = []
+    historical_conflicts: set[str] = set()
+    for row in candidates:
+        round_id = row["round_id"]
+        previous = existing_by_id.get(round_id)
+        if previous is not None:
+            if previous["multiplier"] != row["multiplier"]:
+                historical_conflicts.add(round_id)
+            continue
+        existing_by_id[round_id] = row
+        new_rows.append(row)
+
+    merged_rows = [*existing_rows, *new_rows]
     with CSV_PATH.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=ROUND_COLUMNS)
         writer.writeheader()
-        for row in candidates:
+        for row in merged_rows:
             writer.writerow({key: row.get(key, "") for key in ROUND_COLUMNS})
 
     print(f"Saved {count} sanitized messages to {RAW_PATH}")
-    print(f"Saved {len(candidates)} schema-matched, still-unverified round candidates to {CSV_PATH}")
+    print(
+        f"Saved {len(merged_rows)} total round rows to {CSV_PATH} "
+        f"({len(existing_rows)} retained, {len(new_rows)} new candidates)"
+    )
     if conflicting_ids:
-        print(f"Warning: excluded {len(conflicting_ids)} round IDs with conflicting parsed multipliers.")
+        print(f"Warning: excluded {len(conflicting_ids)} round IDs with conflicting multipliers in this capture.")
+    if historical_conflicts:
+        print(
+            f"Warning: excluded {len(historical_conflicts)} candidates conflicting with existing CSV history; "
+            "the existing rows were preserved."
+        )
+    if merged_rows:
+        merged_quality = quality_report(merged_rows)
+        if merged_quality["chronology_violations"]:
+            print(
+                f"Warning: merged history has {merged_quality['chronology_violations']} "
+                "out-of-order timestamp transitions; research commands will refuse sequence-sensitive analysis."
+            )
     if parse_errors:
         print(f"Warning: {parse_errors} messages had malformed configured result fields.")
     if parser_config is None:
