@@ -54,6 +54,24 @@ class CaptureTests(unittest.TestCase):
             rows = list(csv.DictReader(handle))
         self.assertEqual(rows, [])
 
+    def test_connection_error_does_not_leak_endpoint_credentials(self):
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        secret_url = "wss://user:private-pass@example.invalid/feed?token=private-token"
+        failure = RuntimeError(f"connection failed for {secret_url}")
+        with (
+            patch.dict(os.environ, {"CRASH_WS_URL": secret_url}, clear=True),
+            patch.object(capture_module, "load_dotenv"),
+            patch.object(capture_module, "DATA_DIR", Path(temp_dir.name)),
+            patch.object(capture_module.websocket, "create_connection", side_effect=failure),
+        ):
+            with self.assertRaises(SystemExit) as raised:
+                capture_module.capture()
+        message = str(raised.exception)
+        self.assertNotIn("private-pass", message)
+        self.assertNotIn("private-token", message)
+        self.assertIn("endpoint details suppressed", message)
+
     def test_configured_mapping_emits_unverified_candidate(self):
         raw = json.dumps({
             "type": "round.completed",
