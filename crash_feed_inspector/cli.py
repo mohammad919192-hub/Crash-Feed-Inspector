@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from pathlib import Path
 from typing import Sequence
 
@@ -13,12 +14,21 @@ from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
 from .report import generate_dashboard
 from .research import research_report
+from .supabase_sync import sync_rows
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="crash-feed-inspector")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
+
+    sync = subparsers.add_parser(
+        "sync-supabase",
+        help="Send unverified normalized CSV candidates to the authenticated Supabase ingestion function",
+    )
+    sync.add_argument("csv_path", type=Path)
+    sync.add_argument("--batch-size", type=int, default=500)
+    sync.add_argument("--timeout", type=int, default=20)
 
     inspect = subparsers.add_parser(
         "inspect-jsonl",
@@ -71,20 +81,69 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(exc))
     report = {"quality": quality_report(rows)}
 
-    if args.command == "research-csv":
-        data = verified_multipliers(rows)
-        if not data:
-            parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
+    if args.command == "sync-supabase":
+        from dotenv import load_dotenv
+        load_dotenv()
+        if not 1 <= args.batch_size <= 500:
+            parser.error("--batch-size must be between 1 and 500.")
+        if not 1 <= args.timeout <= 120:
+            parser.error("--timeout must be between 1 and 120 seconds.")
         try:
-            report["research"] = research_report(
-                data,
-                thresholds=tuple(args.thresholds),
-                windows=tuple(args.windows),
-                min_history=args.min_history,
-                max_window_rate_gap=args.max_window_rate_gap,
+            result = sync_rows(
+                rows,
+                os.getenv("SUPABASE_URL", ""),
+                os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
+                timeout=args.timeout,
+                batch_size=args.batch_size,
             )
         except ValueError as exc:
             parser.error(str(exc))
+        print(json.dumps({
+            **result,
+            "quality": report["quality"],
+            "interpretation": "Rows are stored as unverified candidates; this command does not establish source authenticity.",
+        }, ensure_ascii=False, indent=2))
+        return 0
+
+    if args.command == "research-csv":
+        verified_rows = [row for row in rows if row.get("verified") is True]
+        if not verified_rows:
+            parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
+
+        # Multiplier-only research cannot establish chronology. Require every verified
+        # row to have a timestamp and confirm that those timestamps are oldest-to-newest.
+        verified_quality = quality_report(verified_rows)
+        if verified_quality["missing_timestamps"]:
+            report["research"] = {
+                "status": "no_signal_missing_timestamps",
+                "verified_rows": len(verified_rows),
+                "missing_timestamps": verified_quality["missing_timestamps"],
+                "interpretation": (
+                    "Research was not run because verified rows need timestamps to confirm "
+                    "oldest-to-newest ordering."
+                ),
+            }
+        elif verified_quality["chronology_violations"]:
+            report["research"] = {
+                "status": "no_signal_chronology_invalid",
+                "verified_rows": len(verified_rows),
+                "chronology_violations": verified_quality["chronology_violations"],
+                "interpretation": (
+                    "Research was not run because verified CSV rows are not ordered oldest-to-newest."
+                ),
+            }
+        else:
+            data = verified_multipliers(verified_rows)
+            try:
+                report["research"] = research_report(
+                    data,
+                    thresholds=tuple(args.thresholds),
+                    windows=tuple(args.windows),
+                    min_history=args.min_history,
+                    max_window_rate_gap=args.max_window_rate_gap,
+                )
+            except ValueError as exc:
+                parser.error(str(exc))
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return 0
 
@@ -108,11 +167,27 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--min-train must be a positive integer.")
         if args.threshold < 1 or not math.isfinite(args.threshold):
             parser.error("--threshold must be a finite number >= 1.0.")
-        data = verified_multipliers(rows)
+        verified_rows = [row for row in rows if row.get("verified") is True]
+        data = verified_multipliers(verified_rows)
         if not data:
             parser.error("No rows are explicitly verified=true; refusing to analyze unverified candidates.")
         report["verified_analysis"] = describe(data, thresholds=(1.5, 2.0, 3.0, 5.0))
-        if len(data) > args.min_train:
+        verified_quality = quality_report(verified_rows)
+        if verified_quality["missing_timestamps"]:
+            report["walk_forward_baseline"] = {
+                "status": "no_signal_missing_timestamps",
+                "verified_rows": len(data),
+                "missing_timestamps": verified_quality["missing_timestamps"],
+                "interpretation": "Walk-forward evaluation was skipped because verified rows need timestamps to establish chronology.",
+            }
+        elif verified_quality["chronology_violations"]:
+            report["walk_forward_baseline"] = {
+                "status": "no_signal_chronology_invalid",
+                "verified_rows": len(data),
+                "chronology_violations": verified_quality["chronology_violations"],
+                "interpretation": "Walk-forward evaluation was skipped because verified rows are not ordered oldest-to-newest.",
+            }
+        elif len(data) > args.min_train:
             report["walk_forward_baseline"] = walk_forward_baseline(
                 data, threshold=args.threshold, min_train=args.min_train
             )

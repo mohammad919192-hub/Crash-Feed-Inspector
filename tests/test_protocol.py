@@ -15,6 +15,15 @@ SAMPLE = {
 class ProtocolTests(unittest.TestCase):
     def test_nested_path_and_array_index(self):
         self.assertEqual(get_path({"data": {"items": [{"value": 4}]}}, "data.items[0].value"), 4)
+        self.assertEqual(get_path([{"id": "root-item"}], "[0].id"), "root-item")
+
+    def test_malformed_path_and_scalar_index_are_rejected(self):
+        with self.assertRaises(ValueError):
+            get_path({"data": {"value": 3}}, "data..value")
+        with self.assertRaises(ValueError):
+            get_path({"value": "text"}, "value[0]")
+        with self.assertRaises(ValueError):
+            get_path({"data": []}, "data[abc]")
 
     def test_non_final_event_is_ignored(self):
         raw = json.dumps({"type": "round.started", "data": {"round": {"id": "a", "multiplier": 2}}})
@@ -54,6 +63,11 @@ class ProtocolTests(unittest.TestCase):
     def test_invalid_configuration_rejected(self):
         with self.assertRaises(ValueError):
             parse_final_result("{}", event_type_path="type", final_event_types=[],
+                               round_id_path="id", multiplier_path="multiplier")
+
+    def test_malformed_configured_path_fails_before_event_matching(self):
+        with self.assertRaises(ValueError):
+            parse_final_result("{}", event_type_path="type..bad", final_event_types=["done"],
                                round_id_path="id", multiplier_path="multiplier")
 
 

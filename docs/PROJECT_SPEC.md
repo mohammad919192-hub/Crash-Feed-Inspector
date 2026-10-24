@@ -43,14 +43,14 @@ Implemented in the repository:
 - descriptive statistics and chronological walk-forward baseline;
 - unit tests and CI on Python 3.11 and 3.12;
 - local static HTML report for verified historical data;
-- review-only Supabase migration with RLS enabled and client access revoked.
+- Supabase tables with RLS enabled and direct browser-role access revoked; repository migration history is being reconciled against the live schema.
 
 Not yet established:
 - live endpoint reachability and authorization;
 - actual final-event type and multiplier path;
 - any real protocol fixture or trusted historical dataset;
 - a stable predictive advantage;
-- a live Supabase destination or ingestion service;
+- complete repository-to-live Supabase migration-history alignment or an ingestion service;
 - a live or deployed dashboard (only an offline static report is implemented).
 
 ## Completion criteria

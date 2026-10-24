@@ -43,6 +43,18 @@ class ResearchReportTests(unittest.TestCase):
         self.assertEqual(result["status"], "historical_rate_only_no_next_round_claim")
         self.assertIn("not a reliable prediction", report["interpretation"])
 
+    def test_missing_available_windows_cannot_pass_stability(self):
+        report = research_report(
+            [1.1, 2.2, 1.3],
+            thresholds=(2.0,),
+            windows=(10, 20),
+            min_history=2,
+        )
+        result = report["threshold_results"]["2.0"]
+        self.assertEqual(result["status"], "no_signal_stability_unavailable")
+        self.assertFalse(result["filters"]["window_stability_checked"])
+        self.assertFalse(result["filters"]["window_stability_passed"])
+
     def test_invalid_window_rejected(self):
         with self.assertRaises(ValueError):
             research_report([1.1, 2.0], windows=(0,))

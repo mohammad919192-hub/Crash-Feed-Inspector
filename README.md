@@ -12,7 +12,7 @@ Read-only diagnostics and statistical research for an authorized Crash-game WebS
 - Strict CSV validation, duplicate-round rejection, timestamp normalization, and chronology diagnostics.
 - Descriptive statistics, Wilson confidence intervals, recent-window stability checks, and a chronological walk-forward frequency baseline.
 - Unit tests through GitHub Actions.
-- Review-only Supabase/Postgres migration draft for a round-history and prediction ledger; it has not been deployed.
+- Authenticated Supabase Edge Function for storing normalized unverified candidates; the CLI can sync local CSV rows without exposing database credentials to a browser.
 
 ## Explicit non-goals
 
@@ -54,9 +54,19 @@ Configuration:
 
 A path is a dotted JSON path with optional array indexes, such as data.rounds[0].multiplier. If the mapping is not fully configured, capture stores sanitized messages without inferring multipliers.
 
+## Sync normalized candidates to Supabase
+
+The deployed `ingest-crash-rounds` Edge Function accepts only unverified candidates, validates multiplier/timestamp fields, deduplicates identical rounds, and rejects conflicting multipliers. JWT verification is enabled and the function checks for the `service_role` claim before using server-side database access.
+
+Set `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in your local ignored `.env` file. Obtain the legacy service-role JWT from the Supabase dashboard; never paste it into chat, commit it, or use it in frontend/browser code. This key is highly privileged.
+
+    python -m crash_feed_inspector sync-supabase data/rounds.csv
+
+The CSV must contain only `verified=false` rows. The function stores them as pending candidates; it never marks outcomes verified. The function is deployed, but a successful authenticated invocation still needs to be performed with the owner's local key. This sync path does not infer or verify the upstream game's event schema.
+
 Output files are local and ignored by Git:
 - data/messages.jsonl: sanitized message samples with capture timestamps
-- data/rounds.csv: schema-matched candidates in normalized CSV shape; verified is always false
+- data/rounds.csv: normalized candidates with verified=false; prior rows are preserved, repeated round IDs are deduplicated, and conflicting multipliers are skipped with a warning
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
@@ -88,11 +98,11 @@ Historical hit rates are descriptive, not guarantees or proof of a next-round ed
     python -m unittest discover -s tests -v
     python -m compileall -q crash_feed_inspector tests
 
-## Data retention and Supabase draft
+## Data retention and Supabase status
 
-See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round. A database is better suited to durable per-round records and a prediction ledger.
+See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round.
 
-supabase/migrations/202610210001_crash_research_ledger.sql is a review-only draft. It enables row-level security and intentionally creates no public client policies. It has NOT been applied. Confirm the correct Supabase project, server-side ingestion path, and access policy before deployment. Never expose a service-role key in a browser app.
+The connected Supabase project `Crash` contains empty `public.crash_rounds` and `public.crash_predictions` tables; both have RLS enabled and no direct table access for `anon` or `authenticated`. All 11 remote migration versions have matching local filenames, including the finite-value guard. Five retired Commitment Radar versions are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled; the CLI can sync local candidates with `sync-supabase` after setting the service-role JWT in the ignored `.env`. No real feed schema has been verified, so capture parsing still requires inspection and independent confirmation. See `docs/SUPABASE_MIGRATION_HISTORY.md`. Never expose a service-role key in a browser app.
 
 ## Project documents
 

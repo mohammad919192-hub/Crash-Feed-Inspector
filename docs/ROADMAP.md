@@ -36,11 +36,11 @@
 
 ## Stage 5 — Persistence and operator interface
 - [x] Generate a self-contained local HTML snapshot from verified CSV data
-- [ ] Select the correct Supabase project for this repository before applying any database changes
-- [ ] Add a reviewed SQL migration with least-privilege access and RLS
+- [x] Inspect the connected Supabase `Crash` project, table definitions, grants, RLS, migration history, and advisors
+- [ ] Reconcile remote-only migration history, then verify the schema migration against the live table contract
 - [ ] Build a live feed-health and parser-diagnostics interface
 - [x] Add historical distribution and data-quality views in the local HTML report
 - [ ] Add model-evaluation views after a real verified dataset exists
 - [ ] Deploy only after endpoint mapping, tests, and access policy are reviewed
 
-No real endpoint or result schema has been verified yet. A successful socket connection does not prove correct parsing; a backtest does not guarantee future performance. No betting or bankroll automation is in scope.
+The live endpoint and result schema remain unverified. Supabase table/RLS state was inspected, but migration history is incomplete in the repository and no ingestion service is present. A successful socket connection does not prove correct parsing; a backtest does not guarantee future performance. No betting or bankroll automation is in scope.

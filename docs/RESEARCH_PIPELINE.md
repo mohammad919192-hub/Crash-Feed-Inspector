@@ -13,18 +13,20 @@ Maintain a provenance-aware history of observed rounds and time-stamped research
 5. **Independent verification:** compare captured outcomes with a trusted visible completed-round history. Until reconciled, a candidate stays unverified and must not enter model training.
 6. **Dataset quality:** report missing timestamps, source/schema versions, duplicates, chronology violations, missing data, and conflicting records.
 7. **Baseline estimates:** compute empirical threshold frequencies and confidence intervals from verified outcomes only.
-8. **Stability filter:** compare recent windows with the full historical frequency; large shifts result in no_signal_unstable_history.
+8. **Stability filter:** compare recent windows with the full historical frequency; large shifts result in no_signal_unstable_history. If none of the configured windows fits the available history, return no_signal_stability_unavailable.
 9. **Out-of-sample evaluation:** predictions must be timestamped before the result, use only earlier data, and be evaluated on chronological holdouts. Compare against simple frequency baselines using proper scoring rules and calibration.
-10. **Decision gate:** report no_signal when data are insufficient, unstable, unverified, or fail predeclared evaluation criteria. A passing filter means only that a historical estimate passed those diagnostics; it does not establish an exploitable edge.
+10. **Decision gate:** report no_signal when data are insufficient, unstable, unverified, unordered, missing required timestamps, or fail predeclared evaluation criteria. A passing filter means only that a historical estimate passed those diagnostics; it does not establish an exploitable edge.
 
 ## Current local research command
 
-Only rows explicitly marked verified=true are used:
+Only rows explicitly marked verified=true are considered:
 
     python -m crash_feed_inspector research-csv data/rounds.csv
     python -m crash_feed_inspector research-csv data/rounds.csv --thresholds 1.5 2 3 5 --windows 30 100 300 --min-history 100 --max-window-rate-gap 0.15
 
-Input CSV must be ordered oldest-to-newest. Defaults are transparent and configurable; they are not optimized trading parameters. Trying many thresholds/windows and then reporting the best creates multiple-testing bias. Pre-register thresholds and preserve a final untouched holdout.
+For this command, every verified row must have a timezone-aware timestamp, and the verified rows must appear oldest-to-newest in the CSV. If timestamps are missing or verified rows are out of order, the command emits a no_signal status and does not calculate threshold frequencies. This ordering check is necessary because a list of multiplier values alone cannot prove chronology.
+
+Defaults are transparent and configurable; they are not optimized trading parameters. Trying many thresholds/windows and then reporting the best creates multiple-testing bias. Pre-register thresholds and preserve a final untouched holdout.
 
 ## Where each kind of data belongs
 
@@ -36,7 +38,7 @@ Input CSV must be ordered oldest-to-newest. Defaults are transparent and configu
 
 ## Supabase migration status
 
-supabase/migrations/202610210001_crash_research_ledger.sql is a review-only draft. It enables row-level security and intentionally defines no public client policies. Do not apply it until the correct Supabase project, authorization model, retention policy, and server-side ingestion path are confirmed. No database deployment is implied by committing this SQL file.
+The connected Supabase project `Crash` has empty `public.crash_rounds` and `public.crash_predictions` tables. RLS is enabled and direct `anon`/`authenticated` table privileges are absent; the security advisor reports `rls_enabled_no_policy` as INFO, consistent with server-only access. All 11 remote migration versions have matching local filenames. Five legacy Commitment Radar entries are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent; the current Crash migrations reconstruct the final schema. The live `crash_predictions_evaluated_multiplier_finite_check` is installed and verified. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled, and the CLI provides `sync-supabase` for unverified candidates. An authenticated invocation still needs the owner's local service-role JWT; no real feed schema has been independently verified. See `docs/SUPABASE_MIGRATION_HISTORY.md`.
 
 ## Forecast validity
 

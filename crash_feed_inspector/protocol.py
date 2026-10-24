@@ -12,25 +12,44 @@ import re
 from datetime import datetime, timezone
 from typing import Any, Iterable
 
-_PATH_TOKEN = re.compile(r"([^.[\]]+)|\[(\d+)\]")
+
+_PATH_PATTERN = re.compile(
+    r"^(?:\[\d+\]|[^.\[\]]+)(?:\[\d+\])*(?:\.[^.\[\]]+(?:\[\d+\])*)*$"
+)
+
+
+def _validate_path(path: str) -> str:
+    if not isinstance(path, str) or not path.strip():
+        raise ValueError("A non-empty JSON field path is required.")
+    normalized = path.strip()
+    if not _PATH_PATTERN.fullmatch(normalized):
+        raise ValueError(f"Invalid field path: {path!r}")
+    return normalized
 
 
 def get_path(value: Any, path: str) -> Any:
-    """Resolve a dotted path with optional numeric list indexes."""
-    if not path or not path.strip():
-        raise ValueError("A non-empty JSON field path is required.")
+    """Resolve a strict dotted JSON path with optional non-negative list indexes."""
+    normalized = _validate_path(path)
     tokens: list[str | int] = []
-    for match in _PATH_TOKEN.finditer(path.strip()):
-        key, index = match.groups()
-        tokens.append(int(index) if index is not None else key)
-    if not tokens:
-        raise ValueError(f"Invalid field path: {path!r}")
+    for segment in normalized.split("."):
+        key_match = re.match(r"^[^\[]+", segment)
+        if key_match:
+            tokens.append(key_match.group(0))
+            remainder = segment[key_match.end():]
+        else:
+            remainder = segment
+        tokens.extend(int(index) for index in re.findall(r"\[(\d+)\]", remainder))
+
     current = value
     for token in tokens:
-        try:
+        if isinstance(token, int):
+            if not isinstance(current, list) or token >= len(current):
+                raise ValueError(f"Field path {path!r} does not exist.")
             current = current[token]
-        except (KeyError, IndexError, TypeError) as exc:
-            raise ValueError(f"Field path {path!r} does not exist.") from exc
+        else:
+            if not isinstance(current, dict) or token not in current:
+                raise ValueError(f"Field path {path!r} does not exist.")
+            current = current[token]
     return current
 
 
@@ -83,6 +102,9 @@ def parse_final_result(
         raise ValueError("At least one confirmed final event type is required.")
     if not event_type_path or not round_id_path or not multiplier_path:
         raise ValueError("Event type, round ID, and multiplier paths are required.")
+    for configured_path in (event_type_path, round_id_path, multiplier_path, timestamp_path):
+        if configured_path is not None:
+            _validate_path(configured_path)
     if not source.strip() or not schema_version.strip():
         raise ValueError("Source and schema_version must be non-empty.")
 

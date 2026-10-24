@@ -46,13 +46,15 @@ Descriptive analysis + chronological walk-forward baseline
 2. Parsing is not verification. Parsed values remain candidates until reconciled against a trusted reference.
 3. Fail closed on malformed data. Invalid numeric values, duplicate round IDs, unsupported CSV columns, and ambiguous timezone values are rejected rather than silently corrected.
 4. Keep credentials out of logs. Common sensitive fields are redacted before writing. Redaction is best-effort, so sensitive sources must not be captured if safe retention cannot be established.
-5. No direct database writes yet. The existing active Supabase project has not been confirmed as belonging to this repository. The migration is review-only until the correct destination and ingestion trust boundary are established.
+5. No direct database writes yet. The connected Supabase project is named `Crash`; its `crash_rounds` and `crash_predictions` tables are empty, RLS is enabled, and direct `anon`/`authenticated` table privileges are absent. The live database records eight migrations while this repository did not contain their full migration history; do not apply migrations until that drift is reconciled. No Edge Function or ingestion service is present.
 6. Research must be chronological. Model features and probabilities for a round may use only earlier outcomes. Historical fit alone is not evidence of a reliable edge.
 7. No betting actions. The project is read-only and analytical.
 
 ## Known gaps
 
 - Live endpoint reachability and permissions are unverified.
+- Supabase migration history is not fully represented in this repository and must be reconciled before `db push`.
+- No application path currently writes captured rounds or research estimates to Supabase.
 - The authoritative final event and multiplier field are unknown.
 - No sanitized fixture from the actual protocol has been reviewed.
 - No real dataset exists in the repository.

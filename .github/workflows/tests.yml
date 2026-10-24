@@ -1,5 +1,9 @@
 name: Tests
 
+concurrency:
+  group: crash-feed-inspector-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -27,3 +31,50 @@ jobs:
         run: python -m compileall -q crash_feed_inspector tests
       - name: Run unit tests
         run: python -m unittest discover -s tests -v
+
+  migration-test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: crash_feed_inspector_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d crash_feed_inspector_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/crash_feed_inspector_test
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+      - name: Create Supabase client roles for permission tests
+        run: psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE ROLE anon NOLOGIN; CREATE ROLE authenticated NOLOGIN;"
+      - name: Apply migrations to a clean PostgreSQL database
+        run: |
+          for migration in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify schema security and finite-value guard
+        run: |
+          test "$(psql "$DATABASE_URL" -Atc "SELECT relrowsecurity FROM pg_class WHERE oid='public.crash_rounds'::regclass")" = "t"
+          test "$(psql "$DATABASE_URL" -Atc "SELECT relrowsecurity FROM pg_class WHERE oid='public.crash_predictions'::regclass")" = "t"
+          test "$(psql "$DATABASE_URL" -Atc "SELECT has_table_privilege('anon', 'public.crash_rounds', 'SELECT')")" = "f"
+          test "$(psql "$DATABASE_URL" -Atc "SELECT has_table_privilege('authenticated', 'public.crash_predictions', 'INSERT')")" = "f"
+          test "$(psql "$DATABASE_URL" -Atc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.crash_predictions'::regclass AND conname='crash_predictions_evaluated_multiplier_finite_check'")" = "1"
+      - name: Verify migration replay is idempotent
+        run: |
+          for migration in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f "$migration"
+          done
+      - name: Verify repair guard adds a missing finite-value constraint
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "ALTER TABLE public.crash_predictions DROP CONSTRAINT crash_predictions_evaluated_multiplier_finite_check"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/migrations/20261024132036_crash_research_ledger.sql
+          test "$(psql "$DATABASE_URL" -Atc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.crash_predictions'::regclass AND conname='crash_predictions_evaluated_multiplier_finite_check'")" = "1"

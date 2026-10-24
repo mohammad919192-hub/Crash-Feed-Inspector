@@ -1,0 +1,2 @@
+-- Historical migration marker retained to match the connected project's remote migration ledger.
+-- The legacy Commitment Radar audit cascade guards are not part of the current product schema.
