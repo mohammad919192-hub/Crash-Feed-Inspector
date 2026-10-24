@@ -19,6 +19,7 @@ class MigrationContractTests(unittest.TestCase):
             "20261018100502", "20261021102333", "20261021105220",
             "20261021111154", "20261021112101", "20261024131139",
             "20261024132027", "20261024132036",
+            "20261024132027", "20261024132036",
         }
         actual = {path.name[:14] for path in MIGRATIONS.glob("*.sql")}
         self.assertTrue(expected.issubset(actual), f"Missing local migration versions: {sorted(expected - actual)}")
