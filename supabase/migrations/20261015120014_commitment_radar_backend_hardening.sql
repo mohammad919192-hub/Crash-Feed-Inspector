@@ -1,0 +1,3 @@
+-- Historical migration marker retained to match the connected project's remote migration ledger.
+-- Original Commitment Radar hardening SQL is not available in this repository.
+-- No legacy application objects are required by the current project.
