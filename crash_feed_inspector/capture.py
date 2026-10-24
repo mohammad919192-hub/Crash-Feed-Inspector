@@ -105,7 +105,10 @@ def capture() -> None:
                         parsed_by_id[round_id] = result
             print(f"Captured message {count} ({len(raw_text)} characters; common secret fields redacted)")
     finally:
-        ws.close()
+        try:
+            ws.close()
+        except Exception as exc:
+            print(f"WebSocket close failed ({type(exc).__name__}); preserving captured output.")
 
     candidates = [row for round_id, row in parsed_by_id.items() if round_id not in conflicting_ids]
     with CSV_PATH.open("w", newline="", encoding="utf-8") as handle:
