@@ -6,6 +6,7 @@ controls. Parsed rounds remain unverified until independently reconciled.
 """
 from __future__ import annotations
 
+import csv
 import json
 import os
 import random
@@ -24,6 +25,7 @@ from .supabase_sync import sync_rows
 DATA_DIR = Path("data")
 DB_PATH = DATA_DIR / "collector.sqlite3"
 RAW_PATH = DATA_DIR / "continuous_messages.jsonl"
+CSV_PATH = DATA_DIR / "continuous_rounds.csv"
 
 
 def _required(name: str) -> str:
@@ -154,6 +156,23 @@ def _sync_pending(conn: sqlite3.Connection) -> int:
     return len(rows)
 
 
+def _export_csv(conn: sqlite3.Connection) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    temporary = CSV_PATH.with_suffix(".csv.tmp")
+    rows = conn.execute(
+        "SELECT round_id,timestamp_utc,multiplier,source,verified,schema_version "
+        "FROM crash_rounds ORDER BY timestamp_utc, round_id"
+    ).fetchall()
+    with temporary.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["round_id", "timestamp_utc", "multiplier", "source", "verified", "schema_version"])
+        for row in rows:
+            writer.writerow([row[0], row[1], row[2], row[3], "false", row[5]])
+        handle.flush()
+        os.fsync(handle.fileno())
+    temporary.replace(CSV_PATH)
+
+
 def _append_raw(raw: str) -> None:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     record = {
@@ -172,7 +191,6 @@ def run_continuous() -> None:
         raise SystemExit("CRASH_WS_URL must use wss://.")
     account_id = _required("CRASH_ACCOUNT_ID")
     headers = [
-        "Origin: " + os.getenv("CRASH_WS_ORIGIN", "https://ma-1xbet.com").strip(),
         "User-Agent: " + os.getenv(
             "CRASH_WS_USER_AGENT",
             "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36",
@@ -242,7 +260,13 @@ def run_continuous() -> None:
                         except (ValueError, TypeError, OverflowError, OSError) as exc:
                             print(f"Rejected malformed OnCrash event ({type(exc).__name__}).")
                             continue
-                        totals[status if status in totals else "saved"] += 1
+                        if status == "saved":
+                            totals["saved"] += 1
+                            _export_csv(conn)
+                        elif status == "duplicate":
+                            totals["duplicates"] += 1
+                        else:
+                            totals["conflicts"] += 1
                         print(
                             f"Round {arguments[0].get('l')} | {arguments[0].get('f')}x | "
                             f"status={status} | saved={totals['saved']} conflicts={totals['conflicts']}"
@@ -275,8 +299,9 @@ def run_continuous() -> None:
                 print(f"Final Supabase sync: {pending} rows.")
         except Exception as exc:
             print(f"Pending rows remain safely stored locally ({type(exc).__name__}).")
+        _export_csv(conn)
         counts = conn.execute(
             "SELECT COUNT(*), SUM(synced), COUNT(DISTINCT round_id) FROM crash_rounds"
         ).fetchone()
-        print(f"Local totals: rounds={counts[0]}, synced={counts[1] or 0}; session={totals}")
+        print(f"Local totals: rounds={counts[0]}, synced={counts[1] or 0}; CSV={CSV_PATH}; session={totals}")
         conn.close()
