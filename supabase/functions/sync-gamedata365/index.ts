@@ -113,21 +113,41 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json(405, { error: "method_not_allowed" });
 
   const token = (req.headers.get("authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
-  if (!token || jwtRole(token) !== "service_role") {
-    return json(403, { error: "service_role_required" });
+  const apiKeyHeader = req.headers.get("apikey") ?? "";
+  const legacyServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  let secretKeys: Record<string, unknown> = {};
+  try {
+    const rawSecretKeys = Deno.env.get("SUPABASE_SECRET_KEYS");
+    if (rawSecretKeys) secretKeys = JSON.parse(rawSecretKeys);
+  } catch {
+    return json(500, { error: "supabase_secret_keys_invalid" });
+  }
+
+  // Preferred auth: Supabase's non-JWT secret API key, sent only in apikey.
+  // Backward compatibility: exact legacy service_role JWT in both headers.
+  const defaultSecretKey = typeof secretKeys.default === "string" ? secretKeys.default : "";
+  const newSecretAuthorized = Boolean(defaultSecretKey && apiKeyHeader === defaultSecretKey);
+  const legacyAuthorized = Boolean(
+    legacyServiceRoleKey &&
+    apiKeyHeader === legacyServiceRoleKey &&
+    token === legacyServiceRoleKey &&
+    jwtRole(token) === "service_role"
+  );
+  if (!newSecretAuthorized && !legacyAuthorized) {
+    return json(403, { error: "trusted_supabase_secret_key_required" });
   }
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  const supabaseKey = defaultSecretKey || legacyServiceRoleKey;
   const gameDataKey = Deno.env.get("GAMEDATA365_API_KEY");
-  if (!supabaseUrl || !serviceRoleKey || !gameDataKey) {
+  if (!supabaseUrl || !supabaseKey || !gameDataKey) {
     return json(500, {
       error: "server_configuration_missing",
       required_secret: !gameDataKey ? "GAMEDATA365_API_KEY" : "supabase_environment",
     });
   }
 
-  const supabase = createClient(supabaseUrl, serviceRoleKey, {
+  const supabase = createClient(supabaseUrl, supabaseKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
