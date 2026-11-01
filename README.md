@@ -139,3 +139,31 @@ The owner has confirmed successful live API responses for Aviator and JetX. The 
 If the repository is already cloned, enter its directory instead of running git clone again. If pip reports an externally-managed-environment error, create a virtual environment with python -m venv .venv and activate it with source .venv/bin/activate; do not force-install packages.
 
 In .env, keep exactly one active CRASH_WS_URL= assignment and set it only to a WebSocket endpoint you are authorized to access. Do not paste cookies, session tokens, passwords, or authorization headers into this file or share them in logs. Leave all CRASH_*_PATH parser fields blank until the actual message format has been inspected and independently confirmed. To update an existing checkout after a GitHub change, run git pull --ff-only from the repository directory.
+
+## Continuous SignalR collection (operator-configured)
+
+The `collect` command is an optional continuous listener for an authorized
+SignalR endpoint. It stores each parsed `OnCrash` candidate in a durable local
+SQLite database (`data/collector.sqlite3`), writes sanitized feed messages to
+`data/continuous_messages.jsonl`, exports accumulated candidate history to
+`data/continuous_rounds.csv`, and retries pending rows to the protected
+Supabase ingestion function. Failed Supabase requests do not discard queued rows.
+
+Required local-only settings in `.env`:
+- `CRASH_WS_URL`: complete `wss://` endpoint URL, including any required short-lived parameters. Never commit or share it.
+- `CRASH_ACCOUNT_ID`: account identifier required by the source subscription.
+- `CRASH_WS_COOKIE`: optional cookie header value if required by an authorized session. Treat it as a password.
+- `CRASH_WS_ORIGIN`: origin expected by the endpoint.
+- `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`: credentials used only by the local CLI to call the protected Edge Function.
+
+Run with `python -m crash_feed_inspector collect`. Stop with Ctrl+C. The
+collector uses SignalR JSON protocol v1, sends the Account subscription, answers
+SignalR pings, reconnects with exponential backoff, deduplicates by source and
+round id, and records conflicting multipliers separately. It does not backfill
+rounds missed during disconnections; completeness must be independently checked.
+
+Important: the current field mapping (`OnCrash`, `l`, `f`, `ts`) is derived from
+a third-party reference implementation and is not an official provider schema.
+All ingested rows remain `verified=false`. Confirm multiplier and timestamp
+semantics against visible completed-round history before research. This software
+is read-only and does not place bets or guarantee predictions.

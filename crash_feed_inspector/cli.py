@@ -10,6 +10,7 @@ from typing import Sequence
 
 from .analytics import describe, walk_forward_baseline
 from .capture import capture
+from .continuous_capture import run_continuous
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
 from .report import generate_dashboard
@@ -21,6 +22,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="crash-feed-inspector")
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
+    subparsers.add_parser("collect", help="Continuously collect authorized SignalR rounds with local durable storage and Supabase outbox")
 
     sync = subparsers.add_parser(
         "sync-supabase",
@@ -63,6 +65,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command in (None, "capture"):
         capture()
+        return 0
+    if args.command == "collect":
+        run_continuous()
         return 0
 
     if args.command == "inspect-jsonl":
