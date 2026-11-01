@@ -12,7 +12,7 @@ Read-only diagnostics and statistical research for an authorized Crash-game WebS
 - Strict CSV validation, duplicate-round rejection, timestamp normalization, and chronology diagnostics.
 - Descriptive statistics, Wilson confidence intervals, recent-window stability checks, and a chronological walk-forward frequency baseline.
 - Unit tests through GitHub Actions.
-- Authenticated Supabase Edge Function for storing normalized unverified candidates; the CLI can sync local CSV rows without exposing database credentials to a browser.
+- Authenticated Supabase Edge Functions for local candidate ingestion and automated GameData365 history synchronization into Supabase; all imported rounds remain unverified.
 
 ## Explicit non-goals
 
@@ -70,6 +70,12 @@ Output files are local and ignored by Git:
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
+## Automated GameData365 ingestion
+
+The deployed `sync-gamedata365` Edge Function fetches the documented history endpoint for Aviator and JetX, normalizes the last 50 available rounds per game, and stores them in `public.crash_rounds` with `verified=false`. It logs sanitized run metadata in `public.crash_ingestion_runs`; duplicate rounds are ignored and conflicting multipliers are not overwritten. Configure `GAMEDATA365_API_KEY` in Supabase Edge Function Secrets and follow [docs/GAMEDATA365_INGESTION.md](docs/GAMEDATA365_INGESTION.md) to add the Vault Supabase secret API key, test one run, and schedule quota-safe polling.
+
+**Free-plan limitation:** 200 API requests/month and 50 history rounds per game. The documented 8-hour schedule uses about 180 requests/month but cannot guarantee complete round-by-round capture; high-frequency games may have gaps.
+
 ## Validate, analyze, and research historical CSV
 
 CSV must contain round_id and multiplier. Optional columns are timestamp_utc, source, verified, and schema_version. Timestamps must include a timezone. Round IDs must be unique within the file. If verified is omitted or blank, it defaults to false.
@@ -102,7 +108,7 @@ Historical hit rates are descriptive, not guarantees or proof of a next-round ed
 
 See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validation, model-evaluation rules, and data-retention design. GitHub should store source code, tests, schema documentation, migrations, and methodology—not a new commit for every live round.
 
-The connected Supabase project `Crash` contains empty `public.crash_rounds` and `public.crash_predictions` tables; both have RLS enabled and no direct table access for `anon` or `authenticated`. All 11 remote migration versions have matching local filenames, including the finite-value guard. Five retired Commitment Radar versions are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled; the CLI can sync local candidates with `sync-supabase` after setting the service-role JWT in the ignored `.env`. No real feed schema has been verified, so capture parsing still requires inspection and independent confirmation. See `docs/SUPABASE_MIGRATION_HISTORY.md`. Never expose a service-role key in a browser app.
+The connected Supabase project `Crash` contains empty `public.crash_rounds` and `public.crash_predictions` tables; both have RLS enabled and no direct table access for `anon` or `authenticated`. The remote database has 13 migration versions, including the finite-value guard. Five retired Commitment Radar versions are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled; the CLI can sync local candidates with `sync-supabase` after setting the service-role JWT in the ignored `.env`. No real feed schema has been verified, so capture parsing still requires inspection and independent confirmation. See `docs/SUPABASE_MIGRATION_HISTORY.md`. Never expose a service-role key in a browser app.
 
 ## Project documents
 
@@ -113,10 +119,11 @@ The connected Supabase project `Crash` contains empty `public.crash_rounds` and 
 - docs/METRICS.md — KPI definitions and quality gates
 - docs/ROADMAP.md — stages and evidence-based completion criteria
 - docs/RESEARCH_PIPELINE.md — multi-filter research, storage, retention, and signal gates
+- docs/GAMEDATA365_INGESTION.md — provider sync, Vault secrets, schedule, quota, and health checks
 
 ## Current verification limits
 
-The live endpoint and its authoritative completed-round event have not been verified in this repository. Synthetic fixtures test generic parser behavior only; they do not establish the real feed schema or any predictive advantage. A successful WebSocket handshake does not prove completed-round multipliers are present.
+The owner has confirmed successful live API responses for Aviator and JetX. The documented history response still requires one authenticated sync run to validate this account's entitlement and returned rows. Synthetic fixtures test generic parser behavior only; they do not establish the real feed schema or any predictive advantage. A successful WebSocket handshake does not prove completed-round multipliers are present.
 
 ## Android / Termux setup
 
