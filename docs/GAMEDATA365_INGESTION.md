@@ -83,7 +83,7 @@ where jobname = 'crash-gamedata365-sync-8h';
 To remove it:
 
 ```sql
-select cron.unschedule('crash-gamedata365-sync-8h');
+select cron.unschedule(jobid)\nfrom cron.job\nwhere jobname = 'crash-gamedata365-sync-8h';
 ```
 
 ## Important free-tier coverage limitation
