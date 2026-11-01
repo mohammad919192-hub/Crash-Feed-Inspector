@@ -15,8 +15,8 @@ Every provider row is inserted with `verified=false` and `verification_status='p
 
 1. In Supabase Dashboard, open **Edge Functions → Secrets** for project `htfrixfcirgrhlmwtkjs`.
 2. Add `GAMEDATA365_API_KEY` with the GameData365 key. Do not add it to GitHub, source code, or chat.
-3. In Supabase Dashboard, open **Database → Vault** and create a secret named `crash_ingest_service_role_jwt` containing the project's legacy `service_role` JWT. It is used only by pg_cron to authenticate the scheduled Edge Function call. Never paste it into chat or commit it.
-4. Keep the existing Edge Function setting `verify_jwt=true`. The function also checks that the bearer JWT role is `service_role`.
+3. In Supabase Dashboard, open **Database → Vault** and create a secret named `crash_ingest_service_role_jwt` containing the project's Supabase **secret API key** (`sb_secret_...`), preferably the `default` secret key. It is used only by pg_cron to authenticate the scheduled Edge Function call. Never paste it into chat or commit it.
+4. The function is deployed with `verify_jwt=false` because Supabase secret API keys are not JWTs. It validates the incoming `apikey` header against the server-injected `SUPABASE_SECRET_KEYS.default` value. Do not remove this in-function authentication check.
 
 The function also relies on Supabase's built-in `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` Edge Function environment variables. The GameData365 key is a separate secret.
 
@@ -29,8 +29,7 @@ select net.http_post(
   url := 'https://htfrixfcirgrhlmwtkjs.supabase.co/functions/v1/sync-gamedata365',
   headers := jsonb_build_object(
     'Content-Type', 'application/json',
-    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_service_role_jwt'),
-    'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_service_role_jwt')
+    'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_secret_key')
   ),
   body := '{"trigger_source":"manual"}'::jsonb,
   timeout_milliseconds := 30000
@@ -62,8 +61,7 @@ select cron.schedule(
     url := 'https://htfrixfcirgrhlmwtkjs.supabase.co/functions/v1/sync-gamedata365',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
-      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_service_role_jwt'),
-      'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_service_role_jwt')
+      'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'crash_ingest_secret_key')
     ),
     body := '{"trigger_source":"cron"}'::jsonb,
     timeout_milliseconds := 30000
