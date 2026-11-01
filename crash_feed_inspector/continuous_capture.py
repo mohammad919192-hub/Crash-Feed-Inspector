@@ -206,6 +206,13 @@ def run_continuous() -> None:
     print(f"Continuous listener started. Local durable database: {DB_PATH}")
     print("Only OnCrash candidates are stored; verified remains false.")
     try:
+        try:
+            startup_synced = _sync_pending(conn)
+            if startup_synced:
+                print(f"Startup Supabase sync: {startup_synced} queued rows acknowledged.")
+        except Exception as exc:
+            totals["sync_errors"] += 1
+            print(f"Startup Supabase sync deferred ({type(exc).__name__}); local outbox retained.")
         while True:
             ws = None
             try:
