@@ -72,7 +72,7 @@ Redaction is best-effort, not a guarantee. Do not capture a source if it may exp
 
 ## Automated GameData365 ingestion
 
-The deployed `sync-gamedata365` Edge Function fetches the documented history endpoint for Aviator and JetX, normalizes the last 50 available rounds per game, and stores them in `public.crash_rounds` with `verified=false`. It logs sanitized run metadata in `public.crash_ingestion_runs`; duplicate rounds are ignored and conflicting multipliers are not overwritten. Configure `GAMEDATA365_API_KEY` in Supabase Edge Function Secrets and follow [docs/GAMEDATA365_INGESTION.md](docs/GAMEDATA365_INGESTION.md) to add the Vault service-role secret, test one run, and schedule quota-safe polling.
+The deployed `sync-gamedata365` Edge Function fetches the documented history endpoint for Aviator and JetX, normalizes the last 50 available rounds per game, and stores them in `public.crash_rounds` with `verified=false`. It logs sanitized run metadata in `public.crash_ingestion_runs`; duplicate rounds are ignored and conflicting multipliers are not overwritten. Configure `GAMEDATA365_API_KEY` in Supabase Edge Function Secrets and follow [docs/GAMEDATA365_INGESTION.md](docs/GAMEDATA365_INGESTION.md) to add the Vault Supabase secret API key, test one run, and schedule quota-safe polling.
 
 **Free-plan limitation:** 200 API requests/month and 50 history rounds per game. The documented 8-hour schedule uses about 180 requests/month but cannot guarantee complete round-by-round capture; high-frequency games may have gaps.
 
