@@ -1,1 +1,4 @@
 project_id = "crash-feed-inspector"
+
+[functions.dashboard-read]
+verify_jwt = true
