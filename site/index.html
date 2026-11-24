@@ -54,8 +54,8 @@ let toastTimer;
 function msg(t,error){$('auth-msg').textContent=t;$('auth-msg').style.color=error?'var(--red)':'var(--amber)'}
 function toast(t,error){$('toast').textContent=t;$('toast').style.borderColor=error?'#8a4b58':'#456078';$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3500)}
 function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
-function n(v,d){return Number.isFinite(Number(v))?Number(v).toLocaleString('fa-IR',{maximumFractionDigits:d||0}):'—'}
-function mult(v){return Number.isFinite(Number(v))?Number(v).toLocaleString('en-US',{maximumFractionDigits:4})+'x':'—'}
+function n(v,d){return v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString('fa-IR',{maximumFractionDigits:d||0}):'—'}
+function mult(v){return v!==null&&v!==undefined&&v!==''&&Number.isFinite(Number(v))?Number(v).toLocaleString('en-US',{maximumFractionDigits:4})+'x':'—'}
 function date(v){if(!v)return'—';const d=new Date(v);return Number.isNaN(d.getTime())?'نامشخص':new Intl.DateTimeFormat('fa-IR',{dateStyle:'short',timeStyle:'short'}).format(d)}
 function status(s){const m={verified:['تأییدشده','verified'],pending_manual_confirmation:['در انتظار تأیید','pending'],conflict:['تعارض','conflict'],rejected:['ردشده','rejected'],succeeded:['موفق','succeeded'],partial:['ناقص','partial'],failed:['ناموفق','failed'],running:['در حال اجرا','running'],no_signal:['بدون سیگنال',''],research_only:['صرفاً پژوهشی',''],candidate_signal:['کاندید پژوهشی','pending']};const x=m[s]||[s||'نامشخص',''];return'<span class="pill '+x[1]+'">'+esc(x[0])+'</span>'}
 function median(a){a=a.map(Number).filter(x=>Number.isFinite(x)&&x>=1).sort((x,y)=>x-y);if(!a.length)return null;const i=Math.floor(a.length/2);return a.length%2?a[i]:(a[i-1]+a[i])/2}
