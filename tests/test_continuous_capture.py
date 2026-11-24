@@ -5,7 +5,6 @@ undocumented upstream endpoint is currently reachable or that its schema is
 officially guaranteed.
 """
 import csv
-import math
 import sqlite3
 import tempfile
 import unittest
@@ -55,6 +54,8 @@ class SignalRNormalizationTests(unittest.TestCase):
                 base = {"l": "r-1", "f": 2.12345, "ts": 1760000000000}
                 with self.assertRaises(ValueError):
                     collector._save_round(conn, base)
+                with self.assertRaises(ValueError):
+                    collector._save_round(conn, {**base, "l": None, "f": 2.5})
                 for invalid in (True, 0.99, float("nan"), float("inf"), 100000000):
                     with self.subTest(multiplier=invalid):
                         with self.assertRaises((ValueError, TypeError, OverflowError)):
@@ -117,6 +118,38 @@ class SignalRNormalizationTests(unittest.TestCase):
                 self.assertEqual(rows[0]["verified"], "false")
 
 
+    def test_coalesced_oncrash_event_is_processed_and_ping_is_answered(self):
+        class FakeSocket:
+            def __init__(self):
+                self.sent = []
+
+            def send(self, value):
+                self.sent.append(value)
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(collector, "DATA_DIR", root), patch.object(
+                collector, "DB_PATH", root / "collector.sqlite3"
+            ), patch.object(collector, "CSV_PATH", root / "rounds.csv"), patch.dict(
+                "os.environ", {}, clear=True
+            ):
+                conn = collector._db()
+                self.addCleanup(conn.close)
+                socket = FakeSocket()
+                totals = {"messages": 0, "saved": 0, "duplicates": 0, "conflicts": 0, "sync_errors": 0}
+                events = [
+                    {"type": 6},
+                    {"type": 1, "target": "OnCrash", "arguments": [{"l": "coalesced-1", "f": 2.25, "ts": 1760000000000}]},
+                ]
+                collector._process_signalr_events(events, socket, conn, totals)
+                self.assertEqual(len(socket.sent), 1)
+                self.assertIn('"type": 6', socket.sent[0])
+                self.assertEqual(totals["saved"], 1)
+                self.assertEqual(
+                    conn.execute("SELECT round_id FROM crash_rounds").fetchone()[0],
+                    "coalesced-1",
+                )
+
 class SignalRSupabaseOutboxTests(unittest.TestCase):
     def test_pending_rows_are_marked_synced_only_after_full_acknowledgement(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -138,7 +171,7 @@ class SignalRSupabaseOutboxTests(unittest.TestCase):
                 with patch.object(
                     collector,
                     "sync_rows",
-                    return_value={"inserted": 0, "already_present": 0},
+                    return_value={"inserted": 0, "already_present": 0, "verified": 0},
                 ):
                     with self.assertRaises(RuntimeError):
                         collector._sync_pending(conn)
@@ -148,7 +181,7 @@ class SignalRSupabaseOutboxTests(unittest.TestCase):
                 with patch.object(
                     collector,
                     "sync_rows",
-                    return_value={"inserted": 1, "already_present": 0},
+                    return_value={"inserted": 1, "already_present": 0, "verified": 0},
                 ):
                     self.assertEqual(collector._sync_pending(conn), 1)
                 self.assertEqual(
