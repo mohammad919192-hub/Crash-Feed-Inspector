@@ -28,3 +28,17 @@ test('all dashboard sections are hidden except overview by default', () => {
     assert.match(html, new RegExp('class="view" id="view-' + view + '"'));
   }
 });
+
+test('dashboard reads data only through the protected Edge Function', () => {
+  assert.match(html, /functions\.invoke\(["']dashboard-read["']\)/);
+  assert.doesNotMatch(html, /\.from\(["']crash_(rounds|predictions|ingestion_runs)["']\)/);
+});
+
+test('dashboard read function validates trusted app metadata before service-role queries', () => {
+  const source = readFileSync(new URL('../supabase/functions/dashboard-read/index.ts', import.meta.url), 'utf8');
+  assert.match(source, /auth\.getUser\(token\)/);
+  assert.match(source, /app_metadata\?\.crash_dashboard !== true/);
+  assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
+  assert.match(source, /verify_jwt=true/);
+  assert.doesNotMatch(source, /user_metadata/);
+});
