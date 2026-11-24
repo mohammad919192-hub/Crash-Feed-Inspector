@@ -99,7 +99,10 @@ def _frames(raw: str) -> list[dict[str, Any]]:
 
 
 def _save_round(conn: sqlite3.Connection, payload: dict[str, Any]) -> str:
-    round_id = str(payload.get("l", "")).strip()
+    raw_round_id = payload.get("l")
+    if raw_round_id is None or isinstance(raw_round_id, bool):
+        raise ValueError("missing or invalid round id")
+    round_id = str(raw_round_id).strip()
     multiplier_value = payload.get("f")
     if not round_id or len(round_id) > 256:
         raise ValueError("missing or invalid round id")
@@ -162,6 +165,8 @@ def _sync_pending(conn: sqlite3.Connection) -> int:
     result = sync_rows(payload, url, key, timeout=20, batch_size=100)
     if result["inserted"] + result["already_present"] != len(payload):
         raise RuntimeError("Supabase response did not account for every queued round")
+    if result.get("verified") != 0:
+        raise RuntimeError("Supabase response violated the unverified-candidate contract")
     conn.executemany(
         "UPDATE crash_rounds SET synced=1 WHERE source=? AND round_id=?",
         [(row[0], row[1]) for row in rows],
@@ -196,6 +201,48 @@ def _append_raw(raw: str) -> None:
     with RAW_PATH.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, ensure_ascii=False) + "\n")
         handle.flush()
+
+
+def _process_signalr_events(
+    events: list[dict[str, Any]],
+    ws: Any,
+    conn: sqlite3.Connection,
+    totals: dict[str, int],
+) -> None:
+    """Handle already-decoded SignalR frames without dropping coalesced events."""
+    for event in events:
+        totals["messages"] += 1
+        if event.get("type") == 6:
+            ws.send(json.dumps({"type": 6}) + "\x1e")
+            continue
+        if event.get("type") != 1 or event.get("target") != "OnCrash":
+            continue
+        arguments = event.get("arguments")
+        if not isinstance(arguments, list) or not arguments or not isinstance(arguments[0], dict):
+            continue
+        try:
+            status = _save_round(conn, arguments[0])
+        except (ValueError, TypeError, OverflowError, OSError) as exc:
+            print(f"Rejected malformed OnCrash event ({type(exc).__name__}).")
+            continue
+        if status == "saved":
+            totals["saved"] += 1
+            _export_csv(conn)
+        elif status == "duplicate":
+            totals["duplicates"] += 1
+        else:
+            totals["conflicts"] += 1
+        print(
+            f"Round {arguments[0].get('l')} | {arguments[0].get('f')}x | "
+            f"status={status} | saved={totals['saved']} conflicts={totals['conflicts']}"
+        )
+        try:
+            synced = _sync_pending(conn)
+            if synced:
+                print(f"Supabase sync: {synced} candidate rows acknowledged.")
+        except Exception as exc:
+            totals["sync_errors"] += 1
+            print(f"Supabase sync deferred ({type(exc).__name__}); local outbox retained.")
 
 
 def run_continuous() -> None:
@@ -237,14 +284,20 @@ def run_continuous() -> None:
                 ws.settimeout(30)
                 ws.send(json.dumps({"protocol": "json", "version": 1}) + "\x1e")
                 handshake_ok = False
+                pending_events: list[dict[str, Any]] = []
                 handshake_deadline = time.monotonic() + 10
                 while time.monotonic() < handshake_deadline:
                     response = ws.recv()
-                    if isinstance(response, bytes):
-                        response = response.decode("utf-8", errors="replace")
-                    if any(frame.strip() == "{}" for frame in str(response).split("\x1e")):
+                    response_text = response.decode("utf-8", errors="replace") if isinstance(response, bytes) else str(response)
+                    _append_raw(response_text)
+                    handshake_frames = _frames(response_text)
+                    if any(frame == {} for frame in handshake_frames):
+                        # SignalR may coalesce the handshake acknowledgement and
+                        # the first data/ping frames into one WebSocket message.
+                        pending_events.extend(frame for frame in handshake_frames if frame != {})
                         handshake_ok = True
                         break
+                    pending_events.extend(handshake_frames)
                 if not handshake_ok:
                     raise RuntimeError("SignalR handshake acknowledgement not received")
 
@@ -257,6 +310,9 @@ def run_continuous() -> None:
                 print("SignalR handshake complete; Account subscription sent.")
                 attempt = 0
 
+                if pending_events:
+                    _process_signalr_events(pending_events, ws, conn, totals)
+
                 while True:
                     try:
                         raw = ws.recv()
@@ -267,38 +323,7 @@ def run_continuous() -> None:
                         raise ConnectionError("WebSocket closed by remote")
                     raw_text = raw.decode("utf-8", errors="replace") if isinstance(raw, bytes) else str(raw)
                     _append_raw(raw_text)
-                    for event in _frames(raw_text):
-                        totals["messages"] += 1
-                        if event.get("type") == 6:
-                            ws.send(json.dumps({"type": 6}) + "\x1e")
-                        if event.get("type") != 1 or event.get("target") != "OnCrash":
-                            continue
-                        arguments = event.get("arguments")
-                        if not isinstance(arguments, list) or not arguments or not isinstance(arguments[0], dict):
-                            continue
-                        try:
-                            status = _save_round(conn, arguments[0])
-                        except (ValueError, TypeError, OverflowError, OSError) as exc:
-                            print(f"Rejected malformed OnCrash event ({type(exc).__name__}).")
-                            continue
-                        if status == "saved":
-                            totals["saved"] += 1
-                            _export_csv(conn)
-                        elif status == "duplicate":
-                            totals["duplicates"] += 1
-                        else:
-                            totals["conflicts"] += 1
-                        print(
-                            f"Round {arguments[0].get('l')} | {arguments[0].get('f')}x | "
-                            f"status={status} | saved={totals['saved']} conflicts={totals['conflicts']}"
-                        )
-                        try:
-                            synced = _sync_pending(conn)
-                            if synced:
-                                print(f"Supabase sync: {synced} candidate rows acknowledged.")
-                        except Exception as exc:
-                            totals["sync_errors"] += 1
-                            print(f"Supabase sync deferred ({type(exc).__name__}); local outbox retained.")
+                    _process_signalr_events(_frames(raw_text), ws, conn, totals)
             except KeyboardInterrupt:
                 print("Stop requested; local data is committed.")
                 break
