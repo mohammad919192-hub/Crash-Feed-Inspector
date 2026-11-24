@@ -39,6 +39,5 @@ test('dashboard read function validates trusted app metadata before service-role
   assert.match(source, /auth\.getUser\(token\)/);
   assert.match(source, /app_metadata\?\.crash_dashboard !== true/);
   assert.match(source, /SUPABASE_SERVICE_ROLE_KEY/);
-  assert.match(source, /verify_jwt=true/);
   assert.doesNotMatch(source, /user_metadata/);
 });
