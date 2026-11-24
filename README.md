@@ -171,3 +171,5 @@ a third-party reference implementation and is not an official provider schema.
 All ingested rows remain `verified=false`. Confirm multiplier and timestamp
 semantics against visible completed-round history before research. This software
 is read-only and does not place bets or guarantee predictions.
+
+Implementation and compatibility details: [docs/XBET_SIGNALR_ADAPTER.md](docs/XBET_SIGNALR_ADAPTER.md).
