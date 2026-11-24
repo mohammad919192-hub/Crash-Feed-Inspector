@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import json
+import math
 import os
 import random
 import sqlite3
@@ -67,12 +68,19 @@ def _db() -> sqlite3.Connection:
 
 
 def _utc_from_epoch_ms(value: Any) -> str:
-    if isinstance(value, bool):
+    """Normalize an integer Unix-millisecond timestamp without silent truncation."""
+    if isinstance(value, bool) or value is None:
         raise ValueError("timestamp is not numeric")
-    milliseconds = int(value)
-    if milliseconds <= 0:
-        raise ValueError("timestamp must be positive epoch milliseconds")
-    return datetime.fromtimestamp(milliseconds / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("timestamp is not numeric") from exc
+    if not math.isfinite(numeric) or numeric <= 0 or not numeric.is_integer():
+        raise ValueError("timestamp must be a positive integer Unix-millisecond value")
+    try:
+        return datetime.fromtimestamp(numeric / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
+    except (OverflowError, OSError, ValueError) as exc:
+        raise ValueError("timestamp is outside the supported datetime range") from exc
 
 
 def _frames(raw: str) -> list[dict[str, Any]]:
@@ -97,9 +105,15 @@ def _save_round(conn: sqlite3.Connection, payload: dict[str, Any]) -> str:
         raise ValueError("missing or invalid round id")
     if isinstance(multiplier_value, bool):
         raise ValueError("invalid multiplier")
-    multiplier = float(multiplier_value)
-    if not (1 <= multiplier < float("inf")):
-        raise ValueError("multiplier must be finite and >= 1")
+    try:
+        multiplier = float(multiplier_value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("multiplier must be numeric") from exc
+    if not math.isfinite(multiplier) or multiplier < 1 or multiplier > 99_999_999.9999:
+        raise ValueError("multiplier must be finite and within the database range")
+    scaled_multiplier = multiplier * 10_000
+    if abs(scaled_multiplier - round(scaled_multiplier)) > 0.00001:
+        raise ValueError("multiplier may have at most four decimal places")
     timestamp = _utc_from_epoch_ms(payload.get("ts"))
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     source = "xbet_signalr"
