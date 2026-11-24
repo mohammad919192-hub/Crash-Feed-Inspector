@@ -110,6 +110,10 @@ See docs/RESEARCH_PIPELINE.md for the multi-filter workflow, provenance, validat
 
 The connected Supabase project `Crash` contains empty `public.crash_rounds` and `public.crash_predictions` tables; both have RLS enabled and no direct table access for `anon` or `authenticated`. The remote database has 13 migration versions, including the finite-value guard. Five retired Commitment Radar versions are inert historical markers because their original SQL bodies were unavailable and the retired tables are absent. The `ingest-crash-rounds` Edge Function is deployed with JWT verification enabled; the CLI can sync local candidates with `sync-supabase` after setting the service-role JWT in the ignored `.env`. No real feed schema has been verified, so capture parsing still requires inspection and independent confirmation. See `docs/SUPABASE_MIGRATION_HISTORY.md`. Never expose a service-role key in a browser app.
 
+## Private web dashboard
+
+The static dashboard is available in `site/index.html`. It authenticates through Supabase Auth and reads data through the deployed `dashboard-read` Edge Function. The function validates the user's JWT and requires trusted `app_metadata.crash_dashboard=true` before using the server-side service-role credential. The service-role key is never exposed to the browser. See [WEB_DASHBOARD.md](WEB_DASHBOARD.md) for operator setup and the one-time GitHub Pages configuration.
+
 ## Project documents
 
 - docs/PROJECT_SPEC.md — scope and research requirements
