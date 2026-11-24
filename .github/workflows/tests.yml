@@ -59,7 +59,7 @@ jobs:
       - name: Provide Supabase auth.jwt helper for RLS policy tests
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE SCHEMA auth"
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS \\$\\$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{} ')::jsonb \\$\\$"
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "CREATE FUNCTION auth.jwt() RETURNS jsonb LANGUAGE sql STABLE AS \$\$ SELECT coalesce(nullif(current_setting('request.jwt.claims', true), ''), '{}')::jsonb \$\$"
       - name: Apply migrations to a clean PostgreSQL database
         run: |
           for migration in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
