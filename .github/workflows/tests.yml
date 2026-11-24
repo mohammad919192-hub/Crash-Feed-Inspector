@@ -82,8 +82,8 @@ jobs:
       - name: Verify dashboard RLS claim gate
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.crash_rounds(source, round_id, multiplier) VALUES ('test', 'dashboard-rls-test', 2.0)"
-          NO_CLAIM_COUNT="$(psql "$DATABASE_URL" -Atc "SET request.jwt.claims = '{\"role\":\"authenticated\"}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
-          CLAIMED_COUNT="$(psql "$DATABASE_URL" -Atc "SET request.jwt.claims = '{\"role\":\"authenticated\",\"app_metadata\":{\"crash_dashboard\":\"true\"}}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
+          NO_CLAIM_COUNT="$(psql "$DATABASE_URL" -qAtc "SET request.jwt.claims = '{\"role\":\"authenticated\"}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
+          CLAIMED_COUNT="$(psql "$DATABASE_URL" -qAtc "SET request.jwt.claims = '{\"role\":\"authenticated\",\"app_metadata\":{\"crash_dashboard\":\"true\"}}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
           echo "Rows visible without dashboard claim: $NO_CLAIM_COUNT"
           echo "Rows visible with dashboard claim: $CLAIMED_COUNT"
           test "$NO_CLAIM_COUNT" = "0"
