@@ -82,8 +82,12 @@ jobs:
       - name: Verify dashboard RLS claim gate
         run: |
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "INSERT INTO public.crash_rounds(source, round_id, multiplier) VALUES ('test', 'dashboard-rls-test', 2.0)"
-          test "$(psql "$DATABASE_URL" -Atc "SELECT set_config('request.jwt.claims', '{\"role\":\"authenticated\"}', false); SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds; RESET ROLE;" | tail -n1)" = "0"
-          test "$(psql "$DATABASE_URL" -Atc "SELECT set_config('request.jwt.claims', '{\"role\":\"authenticated\",\"app_metadata\":{\"crash_dashboard\":\"true\"}}', false); SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds; RESET ROLE;" | tail -n1)" = "1"
+          NO_CLAIM_COUNT="$(psql "$DATABASE_URL" -Atc "SET request.jwt.claims = '{\"role\":\"authenticated\"}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
+          CLAIMED_COUNT="$(psql "$DATABASE_URL" -Atc "SET request.jwt.claims = '{\"role\":\"authenticated\",\"app_metadata\":{\"crash_dashboard\":\"true\"}}'; SET ROLE authenticated; SELECT count(*) FROM public.crash_rounds;")"
+          echo "Rows visible without dashboard claim: $NO_CLAIM_COUNT"
+          echo "Rows visible with dashboard claim: $CLAIMED_COUNT"
+          test "$NO_CLAIM_COUNT" = "0"
+          test "$CLAIMED_COUNT" = "1"
       - name: Verify migration replay is idempotent
         run: |
           for migration in $(find supabase/migrations -maxdepth 1 -type f -name '*.sql' | sort); do
