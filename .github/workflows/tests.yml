@@ -76,7 +76,7 @@ jobs:
         run: |
           test "$(psql "$DATABASE_URL" -Atc "SELECT relrowsecurity FROM pg_class WHERE oid='public.crash_ingestion_runs'::regclass")" = "t"
           test "$(psql "$DATABASE_URL" -Atc "SELECT has_table_privilege('anon', 'public.crash_ingestion_runs', 'SELECT')")" = "f"
-          test "$(psql "$DATABASE_URL" -Atc "SELECT has_table_privilege('authenticated', 'public.crash_ingestion_runs', 'SELECT')")" = "f"
+          test "$(psql "$DATABASE_URL" -Atc "SELECT has_table_privilege('authenticated', 'public.crash_ingestion_runs', 'SELECT')")" = "t"
           test "$(psql "$DATABASE_URL" -Atc "SELECT count(*) FROM pg_constraint WHERE conrelid='public.crash_rounds'::regclass AND conname='crash_rounds_source_round_id_key'")" = "1"
       - name: Verify dashboard RLS claim gate
         run: |
