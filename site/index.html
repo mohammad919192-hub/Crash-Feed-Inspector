@@ -88,7 +88,6 @@ db.auth.getSession().then(({data,error})=>{if(error)msg(error.message,true);S.se
 setInterval(()=>{if(S.session&&!document.hidden)load()},60000);
 function showAuth(){$('auth').classList.remove('hidden');$('app').classList.add('hidden')}
 function showApp(){$('auth').classList.add('hidden');$('app').classList.remove('hidden')}
-function toast(t,error){$('toast').textContent=t;$('toast').style.borderColor=error?'#8a4b58':'#456078';$('toast').classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('show'),3500)}
 })();
 </script>
 </body></html>
