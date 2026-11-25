@@ -109,9 +109,12 @@ def run_browser_bridge() -> None:
     if len(token) < 24:
         raise SystemExit("Set CRASH_BRIDGE_TOKEN in local .env (at least 24 characters).")
     host = os.getenv("CRASH_BRIDGE_HOST", "127.0.0.1").strip()
-    if host not in ("127.0.0.1", "localhost"):
-        raise SystemExit("For safety, CRASH_BRIDGE_HOST must be loopback (127.0.0.1 or localhost).")
-    port = int(os.getenv("CRASH_BRIDGE_PORT", "8765"))
+    if host != "127.0.0.1":
+        raise SystemExit("For safety and browser compatibility, CRASH_BRIDGE_HOST must be 127.0.0.1.")
+    try:
+        port = int(os.getenv("CRASH_BRIDGE_PORT", "8765"))
+    except ValueError:
+        raise SystemExit("CRASH_BRIDGE_PORT must be an integer between 1024 and 65535.") from None
     if not 1024 <= port <= 65535:
         raise SystemExit("CRASH_BRIDGE_PORT must be between 1024 and 65535.")
 
@@ -167,9 +170,11 @@ def run_browser_bridge() -> None:
                             print(f"CSV export deferred ({type(exc).__name__}); SQLite remains authoritative.")
                     if status == "saved":
                         try:
-                            _sync_pending(conn)
-                        except Exception:
-                            pass  # durable local SQLite outbox remains pending
+                            synced = _sync_pending(conn)
+                            if synced:
+                                print(f"Supabase sync: {synced} candidate rows acknowledged.")
+                        except Exception as exc:
+                            print(f"Supabase sync deferred ({type(exc).__name__}); local SQLite outbox retained.")
                 print(f"Browser SignalR: {status} {body.get('data', {}).get('f')}x | totals={totals}")
                 if csv_error:
                     self._reply(500, {"ok": False, "error": "csv_export_failed", "status": status})
@@ -193,5 +198,7 @@ def run_browser_bridge() -> None:
     finally:
         server.server_close()
         with lock:
-            _export_csv(conn)
-            conn.close()
+            try:
+                _export_csv(conn)
+            finally:
+                conn.close()
