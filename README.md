@@ -74,7 +74,7 @@ Redaction is best-effort, not a guarantee. Do not capture a source if it may exp
 
 The `collect-gamedata365` command polls the documented `GET /v1/crash/live` endpoint. One API request returns the newest completed round for every crash game enabled in the account's plan. New rounds are written to the durable SQLite outbox, exported to `data/continuous_rounds.csv`, and retried to the protected Supabase ingestion function. Round identity is `(source, round_id)`; duplicates are ignored and conflicting multipliers are recorded separately. All rows remain unverified.
 
-Configure `GAMEDATA365_API_KEY` and `GAMEDATA365_POLL_SECONDS` in local `.env`, then run `python -m crash_feed_inspector collect-gamedata365`. The default interval is 300 seconds. Polling cost is approximately `30 × 86400 / interval_seconds` successful calls per month. The endpoint returns only the latest result per game; rounds between polls may be missed. Select an interval that fits the account quota. See [docs/GAMEDATA365_LIVE.md](docs/GAMEDATA365_LIVE.md).
+Configure `GAMEDATA365_API_KEY` and `GAMEDATA365_POLL_SECONDS` in local `.env`, then run `python -m crash_feed_inspector collect-gamedata365`. The default interval is 14,400 seconds (4 hours), about 180 calls per 30 days. Polling cost is approximately `30 × 86400 / interval_seconds` successful calls per month. The endpoint returns only the latest result per game; rounds between polls may be missed. Select an interval that fits the account quota. See [docs/GAMEDATA365_LIVE.md](docs/GAMEDATA365_LIVE.md).
 
 The existing `sync-gamedata365` Edge Function is a separate bounded history importer for Aviator and JetX; it is not a live streaming feed.
 
