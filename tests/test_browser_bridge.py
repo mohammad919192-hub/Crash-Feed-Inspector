@@ -86,6 +86,20 @@ class BrowserBridgeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _store_event(self.conn, self.event(0.5))
 
+    def test_rejects_multiplier_outside_supabase_contract(self):
+        with self.assertRaisesRegex(ValueError, "multiplier_precision_exceeded"):
+            _store_event(self.conn, self.event(2.12345))
+        with self.assertRaisesRegex(ValueError, "multiplier_out_of_range"):
+            _store_event(self.conn, self.event(100000000))
+
+    def test_rejects_invalid_observation_timestamp(self):
+        for value in (True, 0, 1760000000000.5, "1760000000000"):
+            with self.subTest(value=value):
+                event = self.event()
+                event["observedAtMs"] = value
+                with self.assertRaisesRegex(ValueError, "invalid_observed_at"):
+                    _store_event(self.conn, event)
+
     def test_rejects_invalid_event_id(self):
         with self.assertRaises(ValueError):
             _store_event(self.conn, self.event(event_id="../bad"))
