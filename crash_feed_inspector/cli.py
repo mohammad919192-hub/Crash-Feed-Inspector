@@ -14,6 +14,7 @@ from .continuous_capture import run_continuous
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
 from .gamedata365_live import run_gamedata365_live
+from .browser_bridge import run_browser_bridge
 from .report import generate_dashboard
 from .research import research_report
 from .supabase_sync import sync_rows
@@ -25,6 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
     subparsers.add_parser("collect", help="Continuously collect authorized SignalR rounds with local durable storage and Supabase outbox")
     subparsers.add_parser("collect-gamedata365", help="Poll the official GameData365 live Crash API for all games in your plan")
+    subparsers.add_parser("bridge-server", help="Receive authorized browser SignalR OnCrash events on the local Termux device")
 
     sync = subparsers.add_parser(
         "sync-supabase",
@@ -70,6 +72,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "collect":
         run_continuous()
+        return 0
+    if args.command == "bridge-server":
+        run_browser_bridge()
+        return 0
+    if args.command == "collect-gamedata365":
+        run_gamedata365_live()
         return 0
 
     if args.command == "inspect-jsonl":

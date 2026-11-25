@@ -115,6 +115,9 @@ def normalize_live_games(payload: dict[str, Any]) -> list[dict[str, Any]]:
             continue
         if not math.isfinite(multiplier) or not 1 <= multiplier <= MAX_MULTIPLIER:
             continue
+        scaled_multiplier = multiplier * 10_000
+        if abs(scaled_multiplier - round(scaled_multiplier)) > 0.00001:
+            continue
         key = (game_id.strip(), round_id)
         if key in seen:
             continue
@@ -136,6 +139,16 @@ def normalize_live_games(payload: dict[str, Any]) -> list[dict[str, Any]]:
 def store_live_rounds(conn: sqlite3.Connection, rounds: list[dict[str, Any]]) -> dict[str, int]:
     counts = {"inserted": 0, "duplicates": 0, "conflicts": 0, "invalid": 0}
     for row in rounds:
+        multiplier = row.get("multiplier")
+        if (
+            isinstance(multiplier, bool)
+            or not isinstance(multiplier, (int, float))
+            or not math.isfinite(float(multiplier))
+            or not 1 <= float(multiplier) <= MAX_MULTIPLIER
+            or abs(float(multiplier) * 10_000 - round(float(multiplier) * 10_000)) > 0.00001
+        ):
+            counts["invalid"] += 1
+            continue
         existing = conn.execute(
             "SELECT multiplier FROM crash_rounds WHERE source=? AND round_id=?",
             (row["source"], row["round_id"]),
