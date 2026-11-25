@@ -70,11 +70,13 @@ Output files are local and ignored by Git:
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
-## Automated GameData365 ingestion
+## GameData365 live Crash collection
 
-The deployed `sync-gamedata365` Edge Function fetches the documented history endpoint for Aviator and JetX, normalizes the last 50 available rounds per game, and stores them in `public.crash_rounds` with `verified=false`. It logs sanitized run metadata in `public.crash_ingestion_runs`; duplicate rounds are ignored and conflicting multipliers are not overwritten. Configure `GAMEDATA365_API_KEY` in Supabase Edge Function Secrets and follow [docs/GAMEDATA365_INGESTION.md](docs/GAMEDATA365_INGESTION.md) to add the Vault Supabase secret API key, test one run, and schedule quota-safe polling.
+The `collect-gamedata365` command polls the documented `GET /v1/crash/live` endpoint. One API request returns the newest completed round for every crash game enabled in the account's plan. New rounds are written to the durable SQLite outbox, exported to `data/continuous_rounds.csv`, and retried to the protected Supabase ingestion function. Round identity is `(source, round_id)`; duplicates are ignored and conflicting multipliers are recorded separately. All rows remain unverified.
 
-**Free-plan limitation:** 200 API requests/month and 50 history rounds per game. The documented 8-hour schedule uses about 180 requests/month but cannot guarantee complete round-by-round capture; high-frequency games may have gaps.
+Configure `GAMEDATA365_API_KEY` and `GAMEDATA365_POLL_SECONDS` in local `.env`, then run `python -m crash_feed_inspector collect-gamedata365`. The default interval is 300 seconds. Polling cost is approximately `30 × 86400 / interval_seconds` successful calls per month. The endpoint returns only the latest result per game; rounds between polls may be missed. Select an interval that fits the account quota. See [docs/GAMEDATA365_LIVE.md](docs/GAMEDATA365_LIVE.md).
+
+The existing `sync-gamedata365` Edge Function is a separate bounded history importer for Aviator and JetX; it is not a live streaming feed.
 
 ## Validate, analyze, and research historical CSV
 
