@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 from .continuous_capture import _db, _export_csv, _sync_pending
 
 MAX_BODY = 16_384
+MAX_MULTIPLIER = 99_999_999.9999
 
 
 def _store_event(conn, body: dict) -> str:
@@ -33,9 +34,15 @@ def _store_event(conn, body: dict) -> str:
     value = data.get("f")
     if isinstance(value, bool):
         raise ValueError("invalid_multiplier")
-    multiplier = float(value)
-    if not math.isfinite(multiplier) or multiplier < 1 or multiplier > 1e9:
+    try:
+        multiplier = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("invalid_multiplier") from exc
+    if not math.isfinite(multiplier) or multiplier < 1 or multiplier > MAX_MULTIPLIER:
         raise ValueError("multiplier_out_of_range")
+    scaled_multiplier = multiplier * 10_000
+    if abs(scaled_multiplier - round(scaled_multiplier)) > 0.00001:
+        raise ValueError("multiplier_precision_exceeded")
 
     event_id = str(body.get("eventId") or "").strip()
     if not event_id or len(event_id) > 128 or not re.fullmatch(r"[A-Za-z0-9._:-]+", event_id):
@@ -62,13 +69,14 @@ def _store_event(conn, body: dict) -> str:
     source = "browser_signalr:" + host
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     observed_ms = body.get("observedAtMs")
+    if isinstance(observed_ms, bool) or not isinstance(observed_ms, int) or observed_ms <= 0:
+        raise ValueError("invalid_observed_at")
     try:
-        observed_ms = int(observed_ms)
-        if observed_ms <= 0:
-            raise ValueError
-        timestamp = datetime.fromtimestamp(observed_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
-    except (TypeError, ValueError, OverflowError, OSError):
-        timestamp = now
+        timestamp = datetime.fromtimestamp(
+            observed_ms / 1000, tz=timezone.utc
+        ).isoformat().replace("+00:00", "Z")
+    except (OverflowError, OSError, ValueError) as exc:
+        raise ValueError("invalid_observed_at") from exc
 
     existing = conn.execute(
         "SELECT multiplier FROM crash_rounds WHERE source=? AND round_id=?",
