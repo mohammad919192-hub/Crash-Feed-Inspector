@@ -41,6 +41,17 @@ class BrowserBridgeTests(unittest.TestCase):
         _store_event(self.conn, self.event())
         self.assertEqual(_store_event(self.conn, self.event()), "duplicate")
 
+    def test_same_round_with_different_delivery_ids_is_duplicate(self):
+        _store_event(self.conn, self.event(event_id="delivery-1"))
+        self.assertEqual(
+            _store_event(self.conn, self.event(event_id="delivery-2")),
+            "duplicate",
+        )
+        self.assertEqual(
+            self.conn.execute("SELECT COUNT(*) FROM crash_rounds").fetchone()[0],
+            1,
+        )
+
     def test_conflicting_duplicate_is_quarantined(self):
         _store_event(self.conn, self.event())
         self.assertEqual(_store_event(self.conn, self.event(3.2)), "conflict")
