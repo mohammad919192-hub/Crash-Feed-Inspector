@@ -125,6 +125,8 @@ The static dashboard is available in `site/index.html`. It authenticates through
 - docs/PROJECT_SPEC.md — scope and research requirements
 - docs/DATA_CONTRACT.md — parsing, normalization, and verification rules
 - docs/ARCHITECTURE.md — module boundaries and engineering decisions
+- docs/XBET_SIGNALR_ADAPTER.md — direct SignalR adapter protocol and limitations
+- docs/BROWSER_SIGNALR_BRIDGE.md — browser-to-Termux bridge setup and data-quality constraints
 - docs/DELIVERY_PLAN.md — acceptance matrix and ordered delivery plan
 - docs/METRICS.md — KPI definitions and quality gates
 - docs/ROADMAP.md — stages and evidence-based completion criteria
