@@ -61,6 +61,25 @@ class SupabaseSyncTests(unittest.TestCase):
             sync_rows(ROWS, "https://example.supabase.co", "server-secret", opener=opener)
         self.assertNotIn("secret database details", str(caught.exception))
 
+    def test_rejects_values_outside_database_numeric_contract(self):
+        with self.assertRaisesRegex(ValueError, "four decimal places"):
+            sync_rows(
+                [{**ROWS[0], "multiplier": 2.12345}],
+                "https://example.supabase.co", "server-secret",
+            )
+        with self.assertRaisesRegex(ValueError, "supported finite range"):
+            sync_rows(
+                [{**ROWS[0], "multiplier": 100000000}],
+                "https://example.supabase.co", "server-secret",
+            )
+
+    def test_rejects_timestamp_without_timezone_before_network_request(self):
+        with self.assertRaisesRegex(ValueError, "include a timezone"):
+            sync_rows(
+                [{**ROWS[0], "timestamp_utc": "2026-01-01T00:00:00"}],
+                "https://example.supabase.co", "server-secret",
+            )
+
     def test_chunks_rows_to_configured_batch_size(self):
         requests = []
         def opener(request, timeout):
