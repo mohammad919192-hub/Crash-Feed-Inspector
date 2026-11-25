@@ -12,7 +12,6 @@ import random
 import sqlite3
 import time
 from datetime import datetime, timezone
-from email.utils import parsedate_to_datetime
 from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -23,6 +22,14 @@ from .continuous_capture import _db, _export_csv, _sync_pending
 
 API_URL = "https://api.gamedata365.com/v1/crash/live"
 MAX_MULTIPLIER = 99_999_999.9999
+
+
+class FatalProviderError(RuntimeError):
+    """Authentication or entitlement errors that will not recover by retrying."""
+
+
+class ProviderQuotaExceeded(RuntimeError):
+    """The provider quota is exhausted; stop polling until the quota resets."""
 
 
 def _timestamp(value: Any) -> str:
@@ -57,9 +64,9 @@ def fetch_live(api_key: str, *, timeout: int = 15,
     except HTTPError as exc:
         retry_after = exc.headers.get("Retry-After", "")
         if exc.code == 429:
-            raise RuntimeError(f"provider_quota_or_rate_limit: retry_after={retry_after or 'unspecified'}") from None
+            raise ProviderQuotaExceeded(f"provider_quota_exceeded: retry_after={retry_after or 'unspecified'}") from None
         if exc.code in (401, 403):
-            raise RuntimeError(f"provider_auth_or_entitlement_error_http_{exc.code}") from None
+            raise FatalProviderError(f"provider_auth_or_entitlement_error_http_{exc.code}") from None
         if exc.code == 503:
             raise RuntimeError("provider_feed_stale_http_503") from None
         raise RuntimeError(f"provider_http_{exc.code}") from None
@@ -167,7 +174,7 @@ def run_gamedata365_live() -> None:
             "from https://gamedata365.com/api-access; never paste it into chat or commit it."
         )
     try:
-        interval = int(os.getenv("GAMEDATA365_POLL_SECONDS", "300"))
+        interval = int(os.getenv("GAMEDATA365_POLL_SECONDS", "14400"))
         timeout = int(os.getenv("GAMEDATA365_TIMEOUT_SECONDS", "15"))
     except ValueError:
         raise SystemExit("GAMEDATA365_POLL_SECONDS and GAMEDATA365_TIMEOUT_SECONDS must be integers.")
@@ -204,6 +211,9 @@ def run_gamedata365_live() -> None:
                 delay = max(0.0, interval - (time.monotonic() - started))
             except KeyboardInterrupt:
                 print("Stop requested; local database remains committed.")
+                break
+            except (FatalProviderError, ProviderQuotaExceeded) as exc:
+                print(f"Collector stopped: {exc}. Correct the key/plan or wait for quota reset.")
                 break
             except Exception as exc:
                 attempt += 1
