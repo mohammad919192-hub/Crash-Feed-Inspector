@@ -61,6 +61,21 @@ class GameData365LiveTests(unittest.TestCase):
         ]}
         self.assertEqual(len(normalize_live_games(payload)), 1)
 
+    def test_normalizer_rejects_more_than_four_decimal_places(self):
+        payload = {"games": [
+            {"game_id": "precision", "latest": {
+                "round_id": "r-1", "multiplier": 2.12345,
+                "timestamp": "2026-11-25T09:59:50Z",
+            }},
+            {"game_id": "valid", "latest": {
+                "round_id": "r-2", "multiplier": 2.1234,
+                "timestamp": "2026-11-25T09:59:50Z",
+            }},
+        ]}
+        rows = normalize_live_games(payload)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["multiplier"], 2.1234)
+
     def test_sqlite_deduplicates_and_quarantines_conflicts(self):
         conn = sqlite3.connect(":memory:")
         conn.executescript("""
