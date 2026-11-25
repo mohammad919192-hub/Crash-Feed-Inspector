@@ -18,7 +18,7 @@ One response contains the newest completed round for every crash game enabled in
 
 ```dotenv
 GAMEDATA365_API_KEY=your_private_key
-GAMEDATA365_POLL_SECONDS=300
+GAMEDATA365_POLL_SECONDS=14400
 GAMEDATA365_TIMEOUT_SECONDS=15
 SUPABASE_URL=https://htfrixfcirgrhlmwtkjs.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=your_private_supabase_service_role_jwt
@@ -45,7 +45,7 @@ Every successful API call counts as one request. The live endpoint returns the n
 
 `30 × 86,400 / polling_interval_seconds`
 
-For example, a 300-second interval uses approximately 8,640 calls per 30 days; a 5-second interval uses approximately 518,400. Choose an interval that fits the account's actual quota. The documented free key is limited to 200 requests/month, so it cannot provide continuous capture. Do not run a high-frequency poll on a low-quota key.
+For example, a 300-second interval uses approximately 8,640 calls per 30 days; a 5-second interval uses approximately 518,400. A 14,400-second interval uses approximately 180 calls per 30 days. Choose an interval that fits the account's actual quota. The documented free key is limited to 200 requests/month, so it cannot provide continuous capture. Do not run a high-frequency poll on a low-quota key.
 
 The API may return `stale=true`; this means the game has not produced a recent round. A stale value is still a historical last result, not a fresh live event. Provider HTTP 401/403, 429, and 503 conditions are reported distinctly. The collector uses exponential backoff after errors and does not invent missing rounds.
 
