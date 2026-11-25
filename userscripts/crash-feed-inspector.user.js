@@ -4,7 +4,6 @@
 // @version      1.0.0
 // @description  Forward completed OnCrash multipliers from the currently open game page to the local Termux collector.
 // @match        https://*/*
-// @match        http://*/*
 // @run-at       document-start
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
@@ -83,7 +82,5 @@
       return socket;
     }
   });
-  WrappedWebSocket.prototype = NativeWebSocket.prototype;
-  Object.setPrototypeOf(WrappedWebSocket, NativeWebSocket);
   window.WebSocket = WrappedWebSocket;
 })();
