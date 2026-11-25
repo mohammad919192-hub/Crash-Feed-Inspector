@@ -70,7 +70,11 @@ Output files are local and ignored by Git:
 
 Redaction is best-effort, not a guarantee. Do not capture a source if it may expose credentials that cannot safely be retained. Review samples locally before sharing them and remove all session material.
 
-## Browser SignalR bridge (no provider API key)\n\nIf you do not have a GameData365 API key, the optional `bridge-server` command can receive completed-round SignalR events observed by a userscript in a game page you open and are authorized to access. It binds only to `127.0.0.1`, requires a local random bearer token, and forwards only `OnCrash` plus its multiplier field. It does not collect cookies or session credentials. See [docs/BROWSER_SIGNALR_BRIDGE.md](docs/BROWSER_SIGNALR_BRIDGE.md) and install [the userscript](userscripts/crash-feed-inspector.user.js). The reference protocol is not universal; verify several received multipliers against the visible history. All rows remain unverified.\n\n## GameData365 live Crash collection
+## Browser SignalR bridge (no provider API key)
+
+If you do not have a GameData365 API key, the optional `bridge-server` command can receive completed-round SignalR events observed by a userscript in a game page you open and are authorized to access. It binds only to `127.0.0.1`, requires a local random bearer token, and forwards only the `OnCrash` multiplier and round ID fields. The userscript retries transient delivery failures a limited number of times; retries are in-memory and do not survive page closure. It does not collect cookies or session credentials. See [docs/BROWSER_SIGNALR_BRIDGE.md](docs/BROWSER_SIGNALR_BRIDGE.md) and install [the userscript](userscripts/crash-feed-inspector.user.js). The reference protocol is not universal; verify several received multipliers against the visible history. All rows remain unverified.
+
+## GameData365 live Crash collection
 
 The `collect-gamedata365` command polls the documented `GET /v1/crash/live` endpoint. One API request returns the newest completed round for every crash game enabled in the account's plan. New rounds are written to the durable SQLite outbox, exported to `data/continuous_rounds.csv`, and retried to the protected Supabase ingestion function. Round identity is `(source, round_id)`; duplicates are ignored and conflicting multipliers are recorded separately. All rows remain unverified.
 
