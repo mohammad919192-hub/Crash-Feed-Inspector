@@ -1,7 +1,5 @@
-import io
 import sqlite3
 import unittest
-from urllib.error import HTTPError
 
 from crash_feed_inspector.gamedata365_live import (
     fetch_live, normalize_live_games, store_live_rounds,
