@@ -13,6 +13,7 @@ from .capture import capture
 from .continuous_capture import run_continuous
 from .dataset import load_rounds_csv, quality_report, verified_multipliers
 from .inspect import inspect_jsonl
+from .gamedata365_live import run_gamedata365_live
 from .report import generate_dashboard
 from .research import research_report
 from .supabase_sync import sync_rows
@@ -23,6 +24,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     subparsers = parser.add_subparsers(dest="command")
     subparsers.add_parser("capture", help="Capture a bounded authorized WebSocket sample")
     subparsers.add_parser("collect", help="Continuously collect authorized SignalR rounds with local durable storage and Supabase outbox")
+    subparsers.add_parser("collect-gamedata365", help="Poll the official GameData365 live Crash API for all games in your plan")
 
     sync = subparsers.add_parser(
         "sync-supabase",
