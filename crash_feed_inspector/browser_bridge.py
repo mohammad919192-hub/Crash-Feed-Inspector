@@ -40,6 +40,23 @@ def _store_event(conn, body: dict) -> str:
     event_id = str(body.get("eventId") or "").strip()
     if not event_id or len(event_id) > 128 or not re.fullmatch(r"[A-Za-z0-9._:-]+", event_id):
         raise ValueError("invalid_event_id")
+
+    # The reference payload exposes the round identifier as data.l. Prefer it
+    # so separate deliveries of the same round deduplicate across page sessions.
+    raw_round_id = data.get("l")
+    if raw_round_id is None:
+        round_id = event_id  # compatibility fallback for feeds without a round ID
+    else:
+        if isinstance(raw_round_id, bool):
+            raise ValueError("invalid_round_id")
+        round_id = str(raw_round_id).strip()
+        if (
+            not round_id
+            or len(round_id) > 256
+            or not re.fullmatch(r"[A-Za-z0-9._:-]+", round_id)
+        ):
+            raise ValueError("invalid_round_id")
+
     host = str(body.get("host") or "unknown").lower()
     host = re.sub(r"[^a-z0-9.-]", "", host)[:120] or "unknown"
     source = "browser_signalr:" + host
@@ -55,7 +72,7 @@ def _store_event(conn, body: dict) -> str:
 
     existing = conn.execute(
         "SELECT multiplier FROM crash_rounds WHERE source=? AND round_id=?",
-        (source, event_id),
+        (source, round_id),
     ).fetchone()
     if existing:
         if round(float(existing[0]) * 10000) != round(multiplier * 10000):
@@ -63,7 +80,7 @@ def _store_event(conn, body: dict) -> str:
                 """INSERT INTO collector_conflicts
                 (source,round_id,stored_multiplier,incoming_multiplier,observed_at_utc)
                 VALUES(?,?,?,?,?)""",
-                (source, event_id, existing[0], multiplier, now),
+                (source, round_id, existing[0], multiplier, now),
             )
             conn.commit()
             return "conflict"
@@ -73,7 +90,7 @@ def _store_event(conn, body: dict) -> str:
         """INSERT INTO crash_rounds
         (source,round_id,timestamp_utc,multiplier,verified,schema_version,synced,captured_at_utc)
         VALUES(?,?,?,?,0,'browser-signalr-oncrash-v1',0,?)""",
-        (source, event_id, timestamp, multiplier, now),
+        (source, round_id, timestamp, multiplier, now),
     )
     conn.commit()
     return "saved"
