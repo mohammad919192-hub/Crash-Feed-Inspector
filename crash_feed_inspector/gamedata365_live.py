@@ -62,7 +62,7 @@ def fetch_live(api_key: str, *, timeout: int = 15,
         with send(request, timeout=timeout) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except HTTPError as exc:
-        retry_after = exc.headers.get("Retry-After", "")
+        retry_after = exc.headers.get("Retry-After", "") if exc.headers else ""
         if exc.code == 429:
             raise ProviderQuotaExceeded(f"provider_quota_exceeded: retry_after={retry_after or 'unspecified'}") from None
         if exc.code in (401, 403):
