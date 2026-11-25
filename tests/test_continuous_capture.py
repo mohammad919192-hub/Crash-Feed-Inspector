@@ -118,6 +118,22 @@ class SignalRNormalizationTests(unittest.TestCase):
                 self.assertEqual(rows[0]["verified"], "false")
 
 
+    def test_server_close_frame_is_treated_as_disconnect(self):
+        class FakeSocket:
+            def send(self, value):
+                raise AssertionError("close frame must not be answered as a ping")
+
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            with patch.object(collector, "DATA_DIR", root), patch.object(
+                collector, "DB_PATH", root / "collector.sqlite3"
+            ):
+                conn = collector._db()
+                self.addCleanup(conn.close)
+                totals = {"messages": 0, "saved": 0, "duplicates": 0, "conflicts": 0, "sync_errors": 0}
+                with self.assertRaises(ConnectionError):
+                    collector._process_signalr_events([{"type": 7}], FakeSocket(), conn, totals)
+
     def test_coalesced_oncrash_event_is_processed_and_ping_is_answered(self):
         class FakeSocket:
             def __init__(self):
