@@ -32,7 +32,7 @@ It binds only to loopback. Keep Termux running while collecting.
 
 ## 2. Install the browser userscript
 
-1. Install a userscript manager that supports `GM_xmlhttpRequest` (for example, Tampermonkey or Violentmonkey) in a compatible Android browser.
+1. Install a userscript manager that supports `GM_xmlhttpRequest` (for example, Tampermonkey 4.18+ in a compatible Android browser). The script requests Tampermonkey's `@sandbox raw` mode so it can replace the page's actual WebSocket constructor; a manager that ignores this directive may run the script without intercepting the game's sockets.
 2. Open `userscripts/crash-feed-inspector.user.js` from this repository and create a new userscript with its contents.
 3. Replace `REPLACE_WITH_LOCAL_CRASH_BRIDGE_TOKEN` with the exact same random value used in `.env`.
 4. Save and enable the script.
