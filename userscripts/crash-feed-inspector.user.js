@@ -5,6 +5,7 @@
 // @description  Forward completed OnCrash multipliers from the currently open game page to the local Termux collector.
 // @match        https://*/*
 // @run-at       document-start
+// @sandbox     raw
 // @grant        GM_xmlhttpRequest
 // @connect      127.0.0.1
 // @connect      localhost
