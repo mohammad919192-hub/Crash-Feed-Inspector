@@ -154,6 +154,7 @@ def run_browser_bridge() -> None:
                 body = json.loads(self.rfile.read(size).decode("utf-8"))
                 if not isinstance(body, dict):
                     raise ValueError("json_object_required")
+                csv_error = False
                 with lock:
                     status = _store_event(conn, body)
                     totals[status] += 1
@@ -162,6 +163,7 @@ def run_browser_bridge() -> None:
                         try:
                             _export_csv(conn)
                         except OSError as exc:
+                            csv_error = True
                             print(f"CSV export deferred ({type(exc).__name__}); SQLite remains authoritative.")
                     if status == "saved":
                         try:
@@ -169,7 +171,10 @@ def run_browser_bridge() -> None:
                         except Exception:
                             pass  # durable local SQLite outbox remains pending
                 print(f"Browser SignalR: {status} {body.get('data', {}).get('f')}x | totals={totals}")
-                self._reply(200, {"ok": True, "status": status})
+                if csv_error:
+                    self._reply(500, {"ok": False, "error": "csv_export_failed", "status": status})
+                else:
+                    self._reply(200, {"ok": True, "status": status})
             except (ValueError, TypeError, KeyError, json.JSONDecodeError, UnicodeDecodeError) as exc:
                 totals["rejected"] += 1
                 self._reply(400, {"ok": False, "error": str(exc)[:120]})
