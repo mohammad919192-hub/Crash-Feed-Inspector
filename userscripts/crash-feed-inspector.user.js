@@ -18,12 +18,56 @@
   const BRIDGE_TOKEN = "REPLACE_WITH_LOCAL_CRASH_BRIDGE_TOKEN";
   const TARGET_PATH = "/sockets/crash";
   const MAX_SEEN = 2000;
+  const MAX_RETRIES = 3;
   const seen = new Set();
+
+  function postToBridge(body, attempt = 0) {
+    const retry = reason => {
+      if (attempt >= MAX_RETRIES) {
+        console.warn("[Crash Feed Inspector] Bridge delivery failed after retries:", reason);
+        return;
+      }
+      const delay = 500 * (2 ** attempt);
+      setTimeout(() => postToBridge(body, attempt + 1), delay);
+    };
+
+    GM_xmlhttpRequest({
+      method: "POST",
+      url: BRIDGE_URL,
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + BRIDGE_TOKEN
+      },
+      data: JSON.stringify(body),
+      timeout: 5000,
+      onload: response => {
+        if (response.status >= 200 && response.status < 300) {
+          try {
+            const result = JSON.parse(response.responseText || "{}");
+            if (result.status === "conflict") {
+              console.warn("[Crash Feed Inspector] Conflicting value for an existing round.");
+            }
+          } catch (_) {
+            console.warn("[Crash Feed Inspector] Bridge returned an unreadable response.");
+          }
+          return;
+        }
+        if (response.status === 429 || response.status >= 500) {
+          retry("HTTP " + response.status);
+        } else {
+          console.warn("[Crash Feed Inspector] Bridge rejected an event (HTTP " + response.status + ").");
+        }
+      },
+      onerror: () => retry("network error"),
+      ontimeout: () => retry("request timeout")
+    });
+  }
 
   function forward(data) {
     if (!data || typeof data !== "object") return;
     const multiplier = Number(data.f);
-    if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 1e9) return;
+    if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 99999999.9999) return;
+    if (Math.abs(multiplier * 10000 - Math.round(multiplier * 10000)) > 0.00001) return;
 
     const eventId = (globalThis.crypto?.randomUUID?.() ||
       (Date.now().toString(36) + Math.random().toString(36).slice(2)));
@@ -38,19 +82,7 @@
       host: location.hostname,
       data: { f: multiplier, l: data.l ?? null }
     };
-
-    GM_xmlhttpRequest({
-      method: "POST",
-      url: BRIDGE_URL,
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": "Bearer " + BRIDGE_TOKEN
-      },
-      data: JSON.stringify(body),
-      timeout: 5000,
-      onerror: () => console.warn("[Crash Feed Inspector] Local bridge unavailable."),
-      ontimeout: () => console.warn("[Crash Feed Inspector] Local bridge timed out.")
-    });
+    postToBridge(body);
   }
 
   function inspectFrame(raw) {
