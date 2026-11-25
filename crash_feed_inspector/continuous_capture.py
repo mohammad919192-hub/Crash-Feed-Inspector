@@ -215,6 +215,8 @@ def _process_signalr_events(
         if event.get("type") == 6:
             ws.send(json.dumps({"type": 6}) + "\x1e")
             continue
+        if event.get("type") == 7:
+            raise ConnectionError("SignalR server sent a close frame")
         if event.get("type") != 1 or event.get("target") != "OnCrash":
             continue
         arguments = event.get("arguments")
@@ -281,7 +283,7 @@ def run_continuous() -> None:
                     url, timeout=30, header=headers, enable_multithread=True,
                     origin=os.getenv("CRASH_WS_ORIGIN", "https://ma-1xbet.com").strip(),
                 )
-                ws.settimeout(30)
+                ws.settimeout(10)
                 ws.send(json.dumps({"protocol": "json", "version": 1}) + "\x1e")
                 handshake_ok = False
                 pending_events: list[dict[str, Any]] = []
@@ -300,6 +302,7 @@ def run_continuous() -> None:
                     pending_events.extend(handshake_frames)
                 if not handshake_ok:
                     raise RuntimeError("SignalR handshake acknowledgement not received")
+                ws.settimeout(30)
 
                 ws.send(json.dumps({
                     "arguments": [{"activity": 30, "account": account_id}],
