@@ -5,14 +5,13 @@ cookies, authorization headers, bets, balances, or other WebSocket traffic.
 """
 from __future__ import annotations
 
-import hashlib
 import hmac
 import json
 import math
 import os
 import re
+import sqlite3
 import threading
-import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
@@ -65,7 +64,7 @@ def _store_event(conn, body: dict) -> str:
             raise ValueError("invalid_round_id")
 
     host = str(body.get("host") or "unknown").lower()
-    host = re.sub(r"[^a-z0-9.-]", "", host)[:120] or "unknown"
+    host = re.sub(r"[^a-z0-9.-]", "", host)[:112] or "unknown"
     source = "browser_signalr:" + host
     now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     observed_ms = body.get("observedAtMs")
@@ -158,8 +157,13 @@ def run_browser_bridge() -> None:
                 with lock:
                     status = _store_event(conn, body)
                     totals[status] += 1
+                    if status in ("saved", "duplicate"):
+                        # A retry after an earlier CSV failure must repair the snapshot.
+                        try:
+                            _export_csv(conn)
+                        except OSError as exc:
+                            print(f"CSV export deferred ({type(exc).__name__}); SQLite remains authoritative.")
                     if status == "saved":
-                        _export_csv(conn)
                         try:
                             _sync_pending(conn)
                         except Exception:
@@ -169,6 +173,9 @@ def run_browser_bridge() -> None:
             except (ValueError, TypeError, KeyError, json.JSONDecodeError, UnicodeDecodeError) as exc:
                 totals["rejected"] += 1
                 self._reply(400, {"ok": False, "error": str(exc)[:120]})
+            except sqlite3.Error as exc:
+                self._reply(500, {"ok": False, "error": "database_error"})
+                print(f"Browser bridge database error ({type(exc).__name__}).")
 
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"Browser bridge listening on http://{host}:{port}")
