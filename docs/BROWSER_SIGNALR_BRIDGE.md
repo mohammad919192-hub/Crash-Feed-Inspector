@@ -38,7 +38,7 @@ It binds only to loopback. Keep Termux running while collecting.
 4. Save and enable the script.
 5. Open the crash game page in the same Android device. The page must be one you can access normally; do not share session material.
 
-The script only observes WebSocket URLs containing `/sockets/crash` and forwards SignalR `OnCrash` events. It does not create a game connection or bypass login.
+The script only observes WebSocket URLs containing `/sockets/crash` and forwards SignalR `OnCrash` events. Transient network failures and HTTP 5xx/429 responses receive up to three in-memory retries with short exponential delays; delivery is not persisted in the browser and is not guaranteed if the page closes. HTTP 4xx responses are logged and are not retried. It does not create a game connection or bypass login.
 
 ## 3. Confirm capture
 
