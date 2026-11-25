@@ -1,5 +1,11 @@
 import sqlite3
+import tempfile
 import unittest
+from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
+from unittest.mock import patch
+
+from crash_feed_inspector import continuous_capture
 
 from crash_feed_inspector.browser_bridge import _store_event
 
@@ -40,6 +46,21 @@ class BrowserBridgeTests(unittest.TestCase):
     def test_duplicate_event_is_idempotent(self):
         _store_event(self.conn, self.event())
         self.assertEqual(_store_event(self.conn, self.event()), "duplicate")
+
+    def test_shared_database_connection_is_usable_from_request_thread(self):
+        with tempfile.TemporaryDirectory() as directory:
+            data_dir = Path(directory)
+            with (
+                patch.object(continuous_capture, "DATA_DIR", data_dir),
+                patch.object(continuous_capture, "DB_PATH", data_dir / "collector.sqlite3"),
+            ):
+                conn = continuous_capture._db()
+                try:
+                    with ThreadPoolExecutor(max_workers=1) as executor:
+                        result = executor.submit(_store_event, conn, self.event()).result()
+                    self.assertEqual(result, "saved")
+                finally:
+                    conn.close()
 
     def test_same_round_with_different_delivery_ids_is_duplicate(self):
         _store_event(self.conn, self.event(event_id="delivery-1"))
