@@ -61,7 +61,7 @@ The SQLite database is:
 ## Important data-quality limits
 
 - The reference's `OnCrash` / `f` mapping is documented by a third-party project and is not an official schema for every crash game. Confirm several captured values against the visible completed-round history.
-- The receiver uses a locally generated event ID because the reference does not establish a stable round ID in the event. Replays may therefore not deduplicate across separate page sessions.
+- The userscript generates a delivery ID, but the receiver prefers the reference payload's `data.l` round ID for deduplication across repeated deliveries and page sessions. If `data.l` is absent, it falls back to the delivery ID; cross-session deduplication is then not guaranteed.
 - The timestamp is the browser observation time, not a provider-signed event timestamp.
 - All rows remain `verified=false`. The bridge does not establish source authenticity or predictive advantage.
 - The reference project is specifically configured for a Melbet game URL; other brands may use different WebSocket paths, event names, or payload fields. If the page does not emit `/sockets/crash` + `OnCrash`, this adapter will collect nothing.
